@@ -1,0 +1,18 @@
+# Node (React)
+node_modules/
+build/
+dist/
+
+# Environment
+.env
+
+# Python (Flask)
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
