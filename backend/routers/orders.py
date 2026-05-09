@@ -81,7 +81,7 @@ async def verify_otp(order_id: int, otp: str, db: Session = Depends(database.get
 
 
 
-    if order.otp != otp:
+    if str(order.otp).strip() != str(otp).strip():
         raise HTTPException(status_code=400, detail="Invalid OTP")
 
     order.status = "Confirmed"
