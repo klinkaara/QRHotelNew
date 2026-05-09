@@ -54,7 +54,7 @@ const CustomerView = () => {
       socket.on('order_status_update', async (data) => {
         if (session && session.id) {
           try {
-            const res = await axios.get(`http://localhost:8000/api/sessions/${session.id}/orders`);
+            const res = await axios.get(`${API_BASE_URL}/api/sessions/${session.id}/orders`);
             setLiveOrders(res.data);
           } catch(err) { console.error(err); }
         } else {
@@ -80,7 +80,7 @@ const CustomerView = () => {
     }
     
     // Fetch initial table status & menu
-    axios.get(`http://localhost:8000/api/sessions/table/${id}`)
+    axios.get(`${API_BASE_URL}/api/sessions/table/${id}`)
       .then(res => setTableStatus(res.data.status))
       .catch(console.error);
       
@@ -137,10 +137,10 @@ const CustomerView = () => {
       if (sessionOtp) {
         // Auto-verify subsequent orders
         try {
-          await axios.post(`http://localhost:8000/api/orders/${res.data.id}/verify-otp?otp=${sessionOtp}`);
+          await axios.post(`${API_BASE_URL}/api/orders/${res.data.id}/verify-otp?otp=${sessionOtp}`);
           setOrderState('TRACKING');
           clearCart();
-          const ordersRes = await axios.get(`http://localhost:8000/api/sessions/${session.id}/orders`);
+          const ordersRes = await axios.get(`${API_BASE_URL}/api/sessions/${session.id}/orders`);
           setLiveOrders(ordersRes.data);
         } catch(err) {
           setOrderState('OTP');
@@ -155,13 +155,13 @@ const CustomerView = () => {
 
   const verifyOtp = async () => {
     try {
-      await axios.post(`http://localhost:8000/api/orders/${currentOrderId}/verify-otp?otp=${otpInput}`);
+      await axios.post(`${API_BASE_URL}/api/orders/${currentOrderId}/verify-otp?otp=${otpInput}`);
       setSessionOtp(otpInput); // Remember OTP for future orders
       setOrderState('TRACKING');
       clearCart();
       setOtpError('');
       // Fetch orders immediately
-      const res = await axios.get(`http://localhost:8000/api/sessions/${session.id}/orders`);
+      const res = await axios.get(`${API_BASE_URL}/api/sessions/${session.id}/orders`);
       setLiveOrders(res.data);
     } catch (err) {
       setOtpError('Invalid OTP. Please ask your waiter.');
@@ -171,7 +171,7 @@ const CustomerView = () => {
   const requestCheckout = async () => {
     if(window.confirm('Are you sure you want to request the bill?')) {
       try {
-        await axios.post(`http://localhost:8000/api/sessions/${session.id}/checkout`);
+        await axios.post(`${API_BASE_URL}/api/sessions/${session.id}/checkout`);
         setOrderState('THANKS');
       } catch (err) {
         alert('Error requesting checkout');
