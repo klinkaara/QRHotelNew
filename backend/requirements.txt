@@ -3,8 +3,7 @@ uvicorn
 python-socketio
 sqlalchemy
 python-jose
-passlib
+passlib[bcrypt]
+bcrypt
 python-multipart
 aiofiles
-bcrypt
-websockets
