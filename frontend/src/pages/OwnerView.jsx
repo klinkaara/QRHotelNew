@@ -112,9 +112,9 @@ const OwnerView = () => {
 
   const fetchAnalytics = async () => {
     try {
-      const summaryRes = await axios.get('http://localhost:8000/api/analytics/dashboard');
+      const summaryRes = await axios.get('${API_BASE_URL}/api/analytics/dashboard');
       setDashboardSummary(summaryRes.data);
-      const historicalRes = await axios.get('http://localhost:8000/api/analytics/historical');
+      const historicalRes = await axios.get('${API_BASE_URL}/api/analytics/historical');
       setHistoricalData(historicalRes.data);
     } catch (err) {
       console.error(err);
@@ -123,7 +123,7 @@ const OwnerView = () => {
 
   const fetchDailyOrders = async () => {
     try {
-      const res = await axios.get(`http://localhost:8000/api/analytics/daily-orders?date_str=${selectedDate}`);
+      const res = await axios.get(`${API_BASE_URL}/api/analytics/daily-orders?date_str=${selectedDate}`);
       setDailyOrders(res.data);
     } catch (err) {
       console.error(err);
@@ -132,7 +132,7 @@ const OwnerView = () => {
 
   const fetchNotes = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/notes');
+      const res = await axios.get('${API_BASE_URL}/api/notes');
       setNotes(res.data);
     } catch (err) {
       console.error(err);
@@ -143,7 +143,7 @@ const OwnerView = () => {
     e.preventDefault();
     if (!newNote.trim()) return;
     try {
-      await axios.post('http://localhost:8000/api/notes', { content: newNote });
+      await axios.post('${API_BASE_URL}/api/notes', { content: newNote });
       setNewNote('');
       fetchNotes();
     } catch (err) {
@@ -154,7 +154,7 @@ const OwnerView = () => {
   const handleDeleteNote = async (id) => {
     if(window.confirm('Delete this note?')) {
       try {
-        await axios.delete(`http://localhost:8000/api/notes/${id}`);
+        await axios.delete(`${API_BASE_URL}/api/notes/${id}`);
         fetchNotes();
       } catch (err) {
         console.error(err);
@@ -248,7 +248,7 @@ const OwnerView = () => {
 
   const fetchMenu = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/menu/all');
+      const res = await axios.get('${API_BASE_URL}/api/menu/all');
       setMenu(res.data);
     } catch (err) {
       console.error(err);
@@ -257,7 +257,7 @@ const OwnerView = () => {
 
   const fetchTableOrders = async (sessionId) => {
     try {
-      const res = await axios.get(`http://localhost:8000/api/sessions/${sessionId}/orders`);
+      const res = await axios.get(`${API_BASE_URL}/api/sessions/${sessionId}/orders`);
       setTableOrders(res.data);
     } catch (err) {
       console.error(err);
@@ -280,7 +280,7 @@ const OwnerView = () => {
     
     if(window.confirm(`Mark Table ${tableNum} as closed and paid?`)) {
       try {
-        await axios.post(`http://localhost:8000/api/sessions/${alertData.checkoutData.session_id}/close`);
+        await axios.post(`${API_BASE_URL}/api/sessions/${alertData.checkoutData.session_id}/close`);
         dismissTableAlerts(tableNum);
         setSelectedTable(null);
         localStorage.removeItem('owner_selected_table');
@@ -294,7 +294,7 @@ const OwnerView = () => {
   const handleForceCloseTable = async (tableNum, sessionId) => {
     if(window.confirm(`Customer paid, close the table ${tableNum}?`)) {
       try {
-        await axios.post(`http://localhost:8000/api/sessions/${sessionId}/close`);
+        await axios.post(`${API_BASE_URL}/api/sessions/${sessionId}/close`);
         dismissTableAlerts(tableNum);
         setSelectedTable(null);
         localStorage.removeItem('owner_selected_table');
@@ -309,7 +309,7 @@ const OwnerView = () => {
     if (processingOrders.has(orderId)) return;
     setProcessingOrders(prev => new Set(prev).add(orderId));
     try {
-      await axios.post(`http://localhost:8000/api/orders/${orderId}/send-to-kitchen`);
+      await axios.post(`${API_BASE_URL}/api/orders/${orderId}/send-to-kitchen`);
       if (selectedTable && selectedTable.current_session_id) {
         fetchTableOrders(selectedTable.current_session_id);
       }
@@ -326,7 +326,7 @@ const OwnerView = () => {
 
   const updateOrderItem = async (itemId, newQuantity) => {
     try {
-      await axios.put(`http://localhost:8000/api/orders/items/${itemId}?quantity=${newQuantity}`);
+      await axios.put(`${API_BASE_URL}/api/orders/items/${itemId}?quantity=${newQuantity}`);
       if (selectedTable && selectedTable.current_session_id) {
         fetchTableOrders(selectedTable.current_session_id);
       }
@@ -337,7 +337,7 @@ const OwnerView = () => {
 
   const updateOrderRemarks = async (orderId, newRemarks) => {
     try {
-      await axios.put(`http://localhost:8000/api/orders/${orderId}/remarks?remarks=${encodeURIComponent(newRemarks)}`);
+      await axios.put(`${API_BASE_URL}/api/orders/${orderId}/remarks?remarks=${encodeURIComponent(newRemarks)}`);
       if (selectedTable && selectedTable.current_session_id) {
         fetchTableOrders(selectedTable.current_session_id);
       }
@@ -365,7 +365,7 @@ const OwnerView = () => {
     e.preventDefault();
     try {
       if (editingItem) {
-        await axios.put(`http://localhost:8000/api/menu/${editingItem.id}`, formData);
+        await axios.put(`${API_BASE_URL}/api/menu/${editingItem.id}`, formData);
       } else {
         await axios.post(`${API_BASE_URL}/api/menu/`, formData);
       }
@@ -391,7 +391,7 @@ const OwnerView = () => {
   const handleDeleteMenu = async (id) => {
     if(window.confirm('Are you sure you want to delete this menu item?')) {
       try {
-        await axios.delete(`http://localhost:8000/api/menu/${id}`);
+        await axios.delete(`${API_BASE_URL}/api/menu/${id}`);
         fetchMenu();
       } catch (err) {
         alert('Error deleting menu item');

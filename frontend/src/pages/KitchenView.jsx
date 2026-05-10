@@ -50,7 +50,7 @@ const KitchenView = () => {
 
   const updateStatus = async (orderId, newStatus) => {
     try {
-      await axios.post(`http://localhost:8000/api/orders/${orderId}/status?status=${newStatus}`);
+      await axios.post(`${API_BASE_URL}/api/orders/${orderId}/status?status=${newStatus}`);
       if (newStatus === 'Ready') {
         setOrders(prev => prev.filter(o => o.order_id !== orderId));
       } else {
