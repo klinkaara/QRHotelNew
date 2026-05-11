@@ -335,11 +335,20 @@ const WaiterView = () => {
                     key={table.id} 
                     className={`glass-panel table-card ${groupedAlerts[table.table_number] ? 'table-blink' : ''}`} 
                     onClick={() => handleTableClick(table)}
-                    onMouseEnter={(e) => e.currentTarget.style.border = '2px solid var(--primary-color)'}
-                    onMouseLeave={(e) => e.currentTarget.style.border = '2px solid transparent'}
+                    style={{ 
+                      border: table.status === 'Occupied' ? '4px solid var(--accent-color)' : '2px solid transparent',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = table.status === 'Occupied' ? 'var(--accent-color)' : 'transparent'}
                   >
-                    <h2 style={{ marginBottom: '8px' }}>{table.table_number}</h2>
-                    <span className={`status-badge status-${table.status.replace(' ', '')}`}>{table.status}</span>
+                    <h2 style={{ marginBottom: '4px' }}>{table.table_number}</h2>
+                    <span className={`status-badge status-${table.status.replace(' ', '')}`} style={{ marginBottom: '4px' }}>{table.status}</span>
+                    {table.current_otp && (
+                      <div style={{ marginTop: '4px', fontSize: '14px', fontWeight: 'bold', color: 'var(--warning-color)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                        OTP: {table.current_otp}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

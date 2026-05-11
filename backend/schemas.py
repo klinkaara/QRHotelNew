@@ -63,6 +63,7 @@ class Table(TableBase):
     id: int
     current_session_id: Optional[int] = None
     session: Optional[Session] = None
+    current_otp: Optional[str] = None
     class Config:
         orm_mode = True
 

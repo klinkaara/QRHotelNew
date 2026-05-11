@@ -23,6 +23,15 @@ class Table(Base):
 
     session = relationship("Session", foreign_keys=[current_session_id])
 
+    @property
+    def current_otp(self):
+        if self.session and self.session.orders:
+            # Get the OTP from the latest order that has one
+            for order in reversed(self.session.orders):
+                if order.otp:
+                    return order.otp
+        return None
+
 class Session(Base):
     __tablename__ = "sessions"
 

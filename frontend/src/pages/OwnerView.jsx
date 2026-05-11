@@ -11,14 +11,21 @@ const OwnerView = () => {
   const [tables, setTables] = useState([]);
   const [menu, setMenu] = useState([]);
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('owner_active_tab') || 'dashboard';
+    const saved = localStorage.getItem('owner_active_tab');
+    const validTabs = ['dashboard', 'menu', 'daily-orders', 'analytics', 'notes'];
+    return (saved && validTabs.includes(saved)) ? saved : 'dashboard';
   }); // dashboard, menu, daily-orders, analytics, notes
   
   // Waiter-like State
   const [groupedAlerts, setGroupedAlerts] = useState({}); 
   const [selectedTable, setSelectedTable] = useState(() => {
-    const saved = localStorage.getItem('owner_selected_table');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('owner_selected_table');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("Error parsing selected table from localStorage", e);
+      return null;
+    }
   });
   const [tableOrders, setTableOrders] = useState([]);
   const [processingOrders, setProcessingOrders] = useState(new Set());
@@ -57,7 +64,7 @@ const OwnerView = () => {
       
       socket.on('checkout_requested', (data) => {
         addGroupedAlert(data.table_number, data.session_id, {
-          id: Date.now(), type: 'CHECKOUT', text: `Checkout requested. Total: $${data.total.toFixed(2)}`
+          id: Date.now(), type: 'CHECKOUT', text: `Checkout requested. Total: $${(data.total || 0).toFixed(2)}`
         }, { total: data.total, session_id: data.session_id });
       });
       
@@ -112,9 +119,9 @@ const OwnerView = () => {
 
   const fetchAnalytics = async () => {
     try {
-      const summaryRes = await axios.get('${API_BASE_URL}/api/analytics/dashboard');
+      const summaryRes = await api.get('/api/analytics/dashboard');
       setDashboardSummary(summaryRes.data);
-      const historicalRes = await axios.get('${API_BASE_URL}/api/analytics/historical');
+      const historicalRes = await api.get('/api/analytics/historical');
       setHistoricalData(historicalRes.data);
     } catch (err) {
       console.error(err);
@@ -123,7 +130,7 @@ const OwnerView = () => {
 
   const fetchDailyOrders = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/analytics/daily-orders?date_str=${selectedDate}`);
+      const res = await api.get(`/api/analytics/daily-orders?date_str=${selectedDate}`);
       setDailyOrders(res.data);
     } catch (err) {
       console.error(err);
@@ -132,7 +139,7 @@ const OwnerView = () => {
 
   const fetchNotes = async () => {
     try {
-      const res = await axios.get('${API_BASE_URL}/api/notes');
+      const res = await api.get('/api/notes');
       setNotes(res.data);
     } catch (err) {
       console.error(err);
@@ -143,7 +150,7 @@ const OwnerView = () => {
     e.preventDefault();
     if (!newNote.trim()) return;
     try {
-      await axios.post('${API_BASE_URL}/api/notes', { content: newNote });
+      await api.post('/api/notes', { content: newNote });
       setNewNote('');
       fetchNotes();
     } catch (err) {
@@ -220,11 +227,16 @@ const OwnerView = () => {
 
   const fetchTables = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/sessions/tables`);
+      const res = await api.get('/api/sessions/tables');
       setTables(res.data);
       
-      const saved = localStorage.getItem('owner_selected_table');
-      const savedTableId = saved ? JSON.parse(saved)?.id : null;
+      let savedTableId = null;
+      try {
+        const saved = localStorage.getItem('owner_selected_table');
+        savedTableId = saved ? JSON.parse(saved)?.id : null;
+      } catch (e) {
+        console.error("Error parsing saved table ID", e);
+      }
       
       if (savedTableId) {
         const updatedSelected = res.data.find(t => t.id === savedTableId);
@@ -248,7 +260,7 @@ const OwnerView = () => {
 
   const fetchMenu = async () => {
     try {
-      const res = await axios.get('${API_BASE_URL}/api/menu/all');
+      const res = await api.get('/api/menu/all');
       setMenu(res.data);
     } catch (err) {
       console.error(err);
@@ -479,11 +491,20 @@ const OwnerView = () => {
                       key={table.id} 
                       className={`glass-panel table-card ${groupedAlerts[table.table_number] ? 'table-blink' : ''}`} 
                       onClick={() => handleTableClick(table)}
-                      onMouseEnter={(e) => e.currentTarget.style.border = '2px solid var(--primary-color)'}
-                      onMouseLeave={(e) => e.currentTarget.style.border = '2px solid transparent'}
+                      style={{ 
+                        border: table.status === 'Occupied' ? '4px solid var(--accent-color)' : '2px solid transparent',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                      onMouseLeave={(e) => e.currentTarget.style.borderColor = table.status === 'Occupied' ? 'var(--accent-color)' : 'transparent'}
                     >
-                      <h2 style={{ marginBottom: '8px' }}>{table.table_number}</h2>
-                      <span className={`status-badge status-${table.status.replace(' ', '')}`}>{table.status}</span>
+                      <h2 style={{ marginBottom: '4px' }}>{table.table_number}</h2>
+                      <span className={`status-badge status-${table.status.replace(' ', '')}`} style={{ marginBottom: '4px' }}>{table.status}</span>
+                      {table.current_otp && (
+                        <div style={{ marginTop: '4px', fontSize: '14px', fontWeight: 'bold', color: 'var(--warning-color)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                          OTP: {table.current_otp}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -531,7 +552,7 @@ const OwnerView = () => {
                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                     <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{item.name}</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                      <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>${(item.price * item.quantity).toFixed(2)}</span>
+                                      <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</span>
                                       
                                       {(order.status === 'Confirmed' || order.status === 'Pending') && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '6px 8px', borderRadius: '8px' }}>
@@ -651,7 +672,7 @@ const OwnerView = () => {
                   <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <td style={{ padding: '12px' }}>{item.name}</td>
                     <td style={{ padding: '12px' }}>{item.category}</td>
-                    <td style={{ padding: '12px' }}>${item.price.toFixed(2)}</td>
+                    <td style={{ padding: '12px' }}>${(item.price || 0).toFixed(2)}</td>
                     <td style={{ padding: '12px' }}>
                       <span className={`status-badge status-${item.is_active ? 'Available' : 'Awaiting'}`}>{item.is_active ? 'Active' : 'Hidden'}</span>
                     </td>
@@ -677,7 +698,7 @@ const OwnerView = () => {
             <div style={{ display: 'flex', gap: '24px' }}>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
                 <h3 style={{ color: '#94a3b8' }}>Today's Revenue</h3>
-                <p style={{ fontSize: '36px', fontWeight: 'bold', color: 'var(--accent-color)' }}>${dashboardSummary.today_revenue.toFixed(2)}</p>
+                <p style={{ fontSize: '36px', fontWeight: 'bold', color: 'var(--accent-color)' }}>${(dashboardSummary.today_revenue || 0).toFixed(2)}</p>
               </div>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
                 <h3 style={{ color: '#94a3b8' }}>Today's Orders</h3>
@@ -703,7 +724,7 @@ const OwnerView = () => {
                   const heightPercentage = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
                   return (
                     <div key={data.sort_key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                      <span style={{ fontSize: '14px', marginBottom: '8px', color: 'white', fontWeight: 'bold' }}>${data.revenue.toFixed(0)}</span>
+                      <span style={{ fontSize: '14px', marginBottom: '8px', color: 'white', fontWeight: 'bold' }}>${(data.revenue || 0).toFixed(0)}</span>
                       <div style={{ width: '100%', maxWidth: '60px', height: `${heightPercentage}%`, background: 'var(--primary-color)', borderRadius: '8px 8px 0 0', transition: 'height 0.5s ease-out' }}></div>
                       <span style={{ marginTop: '12px', fontSize: '14px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{data.label}</span>
                     </div>
@@ -746,7 +767,7 @@ const OwnerView = () => {
                       <span className={`status-badge status-${session.status.replace(' ', '')}`}>
                         {session.status === 'Closed' ? 'Payment Done' : session.status}
                       </span>
-                      <strong style={{ fontSize: '24px', color: 'var(--accent-color)' }}>${session.total_amount.toFixed(2)}</strong>
+                      <strong style={{ fontSize: '24px', color: 'var(--accent-color)' }}>${(session.total_amount || 0).toFixed(2)}</strong>
                     </div>
                   </div>
                 </div>

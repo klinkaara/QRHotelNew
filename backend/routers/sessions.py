@@ -8,9 +8,13 @@ from datetime import datetime
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
+from sqlalchemy.orm import joinedload
+
 @router.get("/tables", response_model=List[schemas.Table])
 def get_tables(db: Session = Depends(database.get_db)):
-    return db.query(models.Table).all()
+    return db.query(models.Table).options(
+        joinedload(models.Table.session).joinedload(models.Session.orders)
+    ).all()
 
 @router.get("/table/{table_id}", response_model=schemas.Table)
 def get_table(table_id: int, db: Session = Depends(database.get_db)):
