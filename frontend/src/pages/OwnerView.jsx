@@ -186,7 +186,7 @@ const OwnerView = () => {
 
         if (data.status === 'Preparing' || data.status === 'Ready') {
           addGroupedAlert(data.table_number, null, {
-            id: Date.now(), type: 'INFO', text: `Order #${data.order_id} is ${data.status}!`
+            id: Date.now(), type: 'INFO', status: data.status, text: `Order #${data.order_id} is ${data.status}!`
           });
         }
       });
@@ -277,13 +277,25 @@ const OwnerView = () => {
         fetchTableOrders(selectedTable.current_session_id);
       }
     };
+    const handleTableStatusChange = (data) => {
+      // If our selected table is the one that changed, refresh its data
+      if (selectedTable.id === data.table_id || selectedTable.table_number === data.table_number) {
+        fetchTables();
+      }
+    };
+
     socket.on('order_status_update', handleOrderStatusUpdate);
     socket.on('order_details_updated', handleOrderDetailsUpdate);
     socket.on('new_otp', handleNewOtpUpdate);
+    socket.on('table_status_changed', handleTableStatusChange);
+    socket.on('session_closed', handleTableStatusChange);
+
     return () => {
       socket.off('order_status_update', handleOrderStatusUpdate);
       socket.off('order_details_updated', handleOrderDetailsUpdate);
       socket.off('new_otp', handleNewOtpUpdate);
+      socket.off('table_status_changed', handleTableStatusChange);
+      socket.off('session_closed', handleTableStatusChange);
     }
   }, [socket, selectedTable]);
 
@@ -480,22 +492,38 @@ const OwnerView = () => {
 
                         {groupedAlerts[table.table_number] && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            {groupedAlerts[table.table_number].messages.map((msg, idx) => (
-                              <div key={idx} style={{
-                                fontSize: '11px',
-                                padding: '6px 8px',
-                                borderRadius: '4px',
-                                background: msg.type === 'CHECKOUT' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                                color: msg.type === 'CHECKOUT' ? 'var(--danger-color)' : 'var(--warning-color)',
-                                borderLeft: `3px solid ${msg.type === 'CHECKOUT' ? 'var(--danger-color)' : 'var(--warning-color)'}`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                              }}>
-                                <Bell size={10} />
-                                <span>{msg.text}</span>
-                              </div>
-                            ))}
+                            {groupedAlerts[table.table_number].messages.map((msg, idx) => {
+                              let bgColor = 'rgba(245, 158, 11, 0.15)';
+                              let textColor = 'var(--warning-color)';
+                              
+                              if (msg.type === 'CHECKOUT') {
+                                bgColor = 'rgba(239, 68, 68, 0.15)';
+                                textColor = 'var(--danger-color)';
+                              } else if (msg.status === 'Ready') {
+                                bgColor = 'rgba(16, 185, 129, 0.15)';
+                                textColor = 'var(--accent-color)';
+                              } else if (msg.status === 'Preparing') {
+                                bgColor = 'rgba(245, 158, 11, 0.15)';
+                                textColor = 'var(--warning-color)';
+                              }
+
+                              return (
+                                <div key={idx} style={{
+                                  fontSize: '11px',
+                                  padding: '6px 8px',
+                                  borderRadius: '4px',
+                                  background: bgColor,
+                                  color: textColor,
+                                  borderLeft: `3px solid ${textColor}`,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}>
+                                  <Bell size={10} />
+                                  <span>{msg.text}</span>
+                                </div>
+                              );
+                            })}
                             <div style={{ display: 'flex', gap: '4px' }}>
                               {groupedAlerts[table.table_number].needsCheckout && (
                                 <button
