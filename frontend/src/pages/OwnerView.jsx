@@ -48,6 +48,114 @@ const OwnerView = () => {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
 
+  const addGroupedAlert = (tableNum, sessionId, messageObj, checkoutData = null) => {
+    setGroupedAlerts(prev => {
+      const existing = prev[tableNum] || { session_id: sessionId, messages: [], needsCheckout: false, checkoutData: null };
+      const currentSessionId = sessionId || existing.session_id;
+      const isCheckout = checkoutData !== null;
+      
+      return {
+        ...prev,
+        [tableNum]: {
+          ...existing,
+          session_id: currentSessionId,
+          blinkKey: Date.now(),
+          messages: [...existing.messages, messageObj],
+          needsCheckout: existing.needsCheckout || isCheckout,
+          checkoutData: checkoutData || existing.checkoutData
+        }
+      };
+    });
+  };
+
+  const dismissTableAlerts = (tableNum) => {
+    setGroupedAlerts(prev => {
+      const copy = { ...prev };
+      delete copy[tableNum];
+      return copy;
+    });
+  };
+
+  const fetchMenu = async () => {
+    try {
+      const res = await api.get('/api/menu/');
+      setMenu(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchTables = async () => {
+    try {
+      const res = await api.get(`/api/sessions/tables`);
+      setTables(res.data);
+      
+      let savedTableId = null;
+      try {
+        const saved = localStorage.getItem('owner_selected_table');
+        savedTableId = saved ? JSON.parse(saved)?.id : null;
+      } catch (e) {
+        console.error("Error parsing saved table ID", e);
+      }
+      
+      if (savedTableId) {
+        const updatedSelected = res.data.find(t => t.id === savedTableId);
+        if (updatedSelected) {
+           if (updatedSelected.status === 'Available') {
+              setSelectedTable(null);
+              localStorage.removeItem('owner_selected_table');
+              setTableOrders([]);
+           } else {
+              setSelectedTable(updatedSelected);
+              if (updatedSelected.current_session_id) {
+                fetchTableOrders(updatedSelected.current_session_id);
+              }
+           }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchTableOrders = async (sessionId) => {
+    try {
+      const res = await api.get(`/api/sessions/${sessionId}/orders`);
+      setTableOrders(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchNotes = async () => {
+    try {
+      const res = await api.get('/api/notes/');
+      setNotes(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const summaryRes = await api.get('/api/analytics/dashboard');
+      setDashboardSummary(summaryRes.data);
+      const historicalRes = await api.get('/api/analytics/historical');
+      setHistoricalData(historicalRes.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchDailyOrders = async (date) => {
+    try {
+      const res = await api.get(`/api/analytics/daily-orders?date_str=${date}`);
+      setDailyOrders(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchTables();
     fetchMenu();
@@ -118,32 +226,13 @@ const OwnerView = () => {
     }
   }, [activeTab, selectedDate]);
 
-  const fetchAnalytics = async () => {
-    try {
-      const summaryRes = await api.get('/api/analytics/dashboard');
-      setDashboardSummary(summaryRes.data);
-      const historicalRes = await api.get('/api/analytics/historical');
-      setHistoricalData(historicalRes.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchDailyOrders = async () => {
-    try {
-      const res = await api.get(`/api/analytics/daily-orders?date_str=${selectedDate}`);
-      setDailyOrders(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchNotes = async () => {
-    try {
-      const res = await api.get('/api/notes');
-      setNotes(res.data);
-    } catch (err) {
-      console.error(err);
+  const handleTableClick = (table) => {
+    setSelectedTable(table);
+    localStorage.setItem('owner_selected_table', JSON.stringify(table));
+    if (table.current_session_id) {
+      fetchTableOrders(table.current_session_id);
+    } else {
+      setTableOrders([]);
     }
   };
 
@@ -197,85 +286,6 @@ const OwnerView = () => {
         socket.off('new_otp', handleNewOtpUpdate);
      }
   }, [socket, selectedTable]);
-
-  const addGroupedAlert = (tableNum, sessionId, messageObj, checkoutData = null) => {
-    setGroupedAlerts(prev => {
-      const existing = prev[tableNum] || { session_id: sessionId, messages: [], needsCheckout: false, checkoutData: null };
-      const currentSessionId = sessionId || existing.session_id;
-      const isCheckout = checkoutData !== null;
-      
-      return {
-        ...prev,
-        [tableNum]: {
-          ...existing,
-          session_id: currentSessionId,
-          blinkKey: Date.now(),
-          messages: [...existing.messages, messageObj],
-          needsCheckout: existing.needsCheckout || isCheckout,
-          checkoutData: checkoutData || existing.checkoutData
-        }
-      };
-    });
-  };
-
-  const dismissTableAlerts = (tableNum) => {
-    setGroupedAlerts(prev => {
-      const copy = { ...prev };
-      delete copy[tableNum];
-      return copy;
-    });
-  };
-
-  const fetchTables = async () => {
-    try {
-      const res = await api.get(`/api/sessions/tables`);
-      setTables(res.data);
-      
-      let savedTableId = null;
-      try {
-        const saved = localStorage.getItem('owner_selected_table');
-        savedTableId = saved ? JSON.parse(saved)?.id : null;
-      } catch (e) {
-        console.error("Error parsing saved table ID", e);
-      }
-      
-      if (savedTableId) {
-        const updatedSelected = res.data.find(t => t.id === savedTableId);
-        if (updatedSelected) {
-           if (updatedSelected.status === 'Available') {
-              setSelectedTable(null);
-              localStorage.removeItem('owner_selected_table');
-              setTableOrders([]);
-           } else {
-              setSelectedTable(updatedSelected);
-              if (updatedSelected.current_session_id) {
-                fetchTableOrders(updatedSelected.current_session_id);
-              }
-           }
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchMenu = async () => {
-    try {
-      const res = await api.get('/api/menu/all');
-      setMenu(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchTableOrders = async (sessionId) => {
-    try {
-      const res = await api.get(`/api/sessions/${sessionId}/orders`);
-      setTableOrders(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleTableClick = (table) => {
     setSelectedTable(table);

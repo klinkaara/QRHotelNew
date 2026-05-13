@@ -25,87 +25,6 @@ const WaiterView = () => {
     selectedTableRef.current = selectedTable;
   }, [selectedTable]);
 
-  useEffect(() => {
-    fetchTables();
-
-    if (socket) {
-      socket.on('table_status_changed', () => fetchTables());
-      
-      socket.on('new_otp', (data) => {
-        addGroupedAlert(data.table_number, data.session_id, {
-          id: Date.now(), type: 'OTP', text: `Customer placed an order. OTP: ${data.otp}`
-        });
-        fetchTables();
-      });
-      
-      socket.on('checkout_requested', (data) => {
-        addGroupedAlert(data.table_number, data.session_id, {
-          id: Date.now(), type: 'CHECKOUT', text: `Checkout requested. Total: $${(data.total || 0).toFixed(2)}`
-        }, { total: data.total, session_id: data.session_id });
-        fetchTables();
-      });
-      
-      socket.on('order_status_update', (data) => {
-         const currentSelected = selectedTableRef.current;
-         if (currentSelected && (data.table_number === currentSelected.table_number || data.session_id === currentSelected.current_session_id)) {
-            fetchTableOrders(currentSelected.current_session_id);
-         }
-         fetchTables();
-         
-         if (data.status === 'Preparing' || data.status === 'Ready') {
-            addGroupedAlert(data.table_number, null, {
-               id: Date.now(), type: 'INFO', text: `Order #${data.order_id} is ${data.status}!`
-            });
-         }
-      });
-
-      socket.on('order_details_updated', (data) => {
-        const currentSelected = selectedTableRef.current;
-        if (currentSelected && (data.session_id === currentSelected.current_session_id)) {
-           fetchTableOrders(currentSelected.current_session_id);
-        }
-      });
-    }
-
-    return () => {
-      if (socket) {
-        socket.off('table_status_changed');
-        socket.off('new_otp');
-        socket.off('checkout_requested');
-        socket.off('order_status_update');
-        socket.off('order_details_updated');
-      }
-    };
-  }, [socket]);
-
-  // Dedicated effect for selectedTable updates via socket
-  useEffect(() => {
-     if (!socket || !selectedTable) return;
-     const handleOrderStatusUpdate = (data) => {
-        if (selectedTable.table_number === data.table_number && selectedTable.current_session_id) {
-           fetchTableOrders(selectedTable.current_session_id);
-        }
-     };
-     const handleOrderDetailsUpdate = (data) => {
-        if (selectedTable.id === data.table_id && selectedTable.current_session_id === data.session_id) {
-           fetchTableOrders(data.session_id);
-        }
-     };
-     const handleNewOtpUpdate = (data) => {
-        if (selectedTable.table_number === data.table_number) {
-           fetchTableOrders(selectedTable.current_session_id);
-        }
-     };
-     socket.on('order_status_update', handleOrderStatusUpdate);
-     socket.on('order_details_updated', handleOrderDetailsUpdate);
-     socket.on('new_otp', handleNewOtpUpdate);
-     return () => {
-        socket.off('order_status_update', handleOrderStatusUpdate);
-        socket.off('order_details_updated', handleOrderDetailsUpdate);
-        socket.off('new_otp', handleNewOtpUpdate);
-     }
-  }, [socket, selectedTable]);
-
   const addGroupedAlert = (tableNum, sessionId, messageObj, checkoutData = null) => {
     setGroupedAlerts(prev => {
       const existing = prev[tableNum] || { session_id: sessionId, messages: [], needsCheckout: false, checkoutData: null };
@@ -143,8 +62,13 @@ const WaiterView = () => {
       setTables(res.data);
       
       // Check if we need to sync the selected table from updated data
-      const saved = localStorage.getItem('waiter_selected_table');
-      const savedTableId = saved ? JSON.parse(saved)?.id : null;
+      let savedTableId = null;
+      try {
+        const saved = localStorage.getItem('waiter_selected_table');
+        savedTableId = saved ? JSON.parse(saved)?.id : null;
+      } catch (e) {
+        console.error("Error parsing saved table ID", e);
+      }
       
       if (savedTableId) {
         const updatedSelected = res.data.find(t => t.id === savedTableId);
@@ -256,6 +180,88 @@ const WaiterView = () => {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    fetchTables();
+
+    if (socket) {
+      socket.on('table_status_changed', () => fetchTables());
+      
+      socket.on('new_otp', (data) => {
+        addGroupedAlert(data.table_number, data.session_id, {
+          id: Date.now(), type: 'OTP', text: `Customer placed an order. OTP: ${data.otp}`
+        });
+        fetchTables();
+      });
+      
+      socket.on('checkout_requested', (data) => {
+        addGroupedAlert(data.table_number, data.session_id, {
+          id: Date.now(), type: 'CHECKOUT', text: `Checkout requested. Total: $${(data.total || 0).toFixed(2)}`
+        }, { total: data.total, session_id: data.session_id });
+        fetchTables();
+      });
+      
+      socket.on('order_status_update', (data) => {
+         const currentSelected = selectedTableRef.current;
+         if (currentSelected && (data.table_number === currentSelected.table_number || data.session_id === currentSelected.current_session_id)) {
+            fetchTableOrders(currentSelected.current_session_id);
+         }
+         fetchTables();
+         
+         if (data.status === 'Preparing' || data.status === 'Ready') {
+            addGroupedAlert(data.table_number, null, {
+               id: Date.now(), type: 'INFO', text: `Order #${data.order_id} is ${data.status}!`
+            });
+         }
+      });
+
+      socket.on('order_details_updated', (data) => {
+        const currentSelected = selectedTableRef.current;
+        if (currentSelected && (data.session_id === currentSelected.current_session_id)) {
+           fetchTableOrders(currentSelected.current_session_id);
+        }
+      });
+    }
+
+    return () => {
+      if (socket) {
+        socket.off('table_status_changed');
+        socket.off('new_otp');
+        socket.off('checkout_requested');
+        socket.off('order_status_update');
+        socket.off('order_details_updated');
+      }
+    };
+  }, [socket]);
+
+  // Dedicated effect for selectedTable updates via socket
+  useEffect(() => {
+     if (!socket || !selectedTable) return;
+     const handleOrderStatusUpdate = (data) => {
+        if (selectedTable.table_number === data.table_number && selectedTable.current_session_id) {
+           fetchTableOrders(selectedTable.current_session_id);
+        }
+     };
+     const handleOrderDetailsUpdate = (data) => {
+        if (selectedTable.id === data.table_id && selectedTable.current_session_id === data.session_id) {
+           fetchTableOrders(data.session_id);
+        }
+     };
+     const handleNewOtpUpdate = (data) => {
+        if (selectedTable.table_number === data.table_number) {
+           fetchTableOrders(selectedTable.current_session_id);
+        }
+     };
+     socket.on('order_status_update', handleOrderStatusUpdate);
+     socket.on('order_details_updated', handleOrderDetailsUpdate);
+     socket.on('new_otp', handleNewOtpUpdate);
+
+     return () => {
+        socket.off('order_status_update', handleOrderStatusUpdate);
+        socket.off('order_details_updated', handleOrderDetailsUpdate);
+        socket.off('new_otp', handleNewOtpUpdate);
+     }
+  }, [socket, selectedTable]);
 
   const getSessionOtp = () => {
      if (tableOrders.length > 0 && tableOrders[0].otp) return tableOrders[0].otp;
