@@ -36,12 +36,14 @@ const WaiterView = () => {
         addGroupedAlert(data.table_number, data.session_id, {
           id: Date.now(), type: 'OTP', text: `Customer placed an order. OTP: ${data.otp}`
         });
+        fetchTables();
       });
       
       socket.on('checkout_requested', (data) => {
         addGroupedAlert(data.table_number, data.session_id, {
-          id: Date.now(), type: 'CHECKOUT', text: `Checkout requested. Total: $${data.total.toFixed(2)}`
+          id: Date.now(), type: 'CHECKOUT', text: `Checkout requested. Total: $${(data.total || 0).toFixed(2)}`
         }, { total: data.total, session_id: data.session_id });
+        fetchTables();
       });
       
       socket.on('order_status_update', (data) => {
@@ -285,73 +287,79 @@ const WaiterView = () => {
         </button>
       </div>
 
-      <div className="responsive-grid">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <h3>Alerts</h3>
-          {Object.keys(groupedAlerts).length === 0 ? <p style={{ color: '#94a3b8' }}>No active alerts</p> : null}
-          
-          {Object.entries(groupedAlerts).map(([tableNum, alertData]) => {
-            // Determine primary highlight color based on needsCheckout
-            const borderStyle = alertData.needsCheckout ? '4px solid var(--danger-color)' : '4px solid var(--warning-color)';
-            
-            return (
-              <div 
-                key={alertData.blinkKey} // Changing key triggers the animation
-                className={`glass-panel alert-blink`} 
-                style={{ borderLeft: borderStyle, marginBottom: '16px' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                  <Bell size={20} color={alertData.needsCheckout ? 'var(--danger-color)' : 'var(--warning-color)'} />
-                  <strong style={{ fontSize: '18px' }}>Table {tableNum}</strong>
-                </div>
-                
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px 0' }}>
-                  {alertData.messages.map((msg, idx) => (
-                    <li key={msg.id || idx} style={{ fontSize: '14px', marginBottom: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                      <span style={{ marginTop: '2px' }}>•</span>
-                      <span>{msg.text}</span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {alertData.needsCheckout && (
-                    <button className="modern-button danger" style={{ padding: '8px', fontSize: '12px' }} onClick={() => handleCheckout(tableNum)}>Close Table</button>
-                  )}
-                  <button className="modern-button" style={{ padding: '8px', fontSize: '12px', background: 'transparent', border: '1px solid var(--glass-border)' }} onClick={() => dismissTableAlerts(tableNum)}>Dismiss</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div>
+      <div style={{ marginTop: '24px' }}>
           {!selectedTable ? (
             <>
               <h3>Tables Status</h3>
-              <div className="grid-cards" style={{ marginTop: '16px' }}>
-                {tables.map(table => (
-                  <div 
-                    key={table.id} 
-                    className={`glass-panel table-card ${groupedAlerts[table.table_number] ? 'table-blink' : ''}`} 
-                    onClick={() => handleTableClick(table)}
-                    style={{ 
-                      border: table.status === 'Occupied' ? '4px solid var(--accent-color)' : '2px solid transparent',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary-color)'}
-                    onMouseLeave={(e) => e.currentTarget.style.borderColor = table.status === 'Occupied' ? 'var(--accent-color)' : 'transparent'}
-                  >
-                    <h2 style={{ marginBottom: '4px' }}>{table.table_number}</h2>
-                    <span className={`status-badge status-${table.status.replace(' ', '')}`} style={{ marginBottom: '4px' }}>{table.status}</span>
-                    {table.current_otp && (
-                      <div style={{ marginTop: '4px', fontSize: '14px', fontWeight: 'bold', color: 'var(--warning-color)', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
-                        OTP: {table.current_otp}
+                <div className="grid-cards" style={{ marginTop: '16px' }}>
+                  {tables.map(table => (
+                    <div key={table.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div 
+                        className={`glass-panel table-card ${groupedAlerts[table.table_number] ? 'table-blink' : ''}`} 
+                        onClick={() => handleTableClick(table)}
+                        style={{ 
+                          border: table.status === 'Occupied' ? '4px solid var(--accent-color)' : '2px solid transparent',
+                          transition: 'all 0.3s ease',
+                          marginBottom: 0,
+                          flex: 1
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                        onMouseLeave={(e) => e.currentTarget.style.borderColor = table.status === 'Occupied' ? 'var(--accent-color)' : 'transparent'}
+                      >
+                        <h2 style={{ marginBottom: '4px' }}>{table.table_number}</h2>
+                        <span className={`status-badge status-${table.status.replace(' ', '')}`} style={{ marginBottom: '4px' }}>{table.status}</span>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+
+                      {/* Integrated Alerts & OTP Below Card */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {table.current_otp && (
+                          <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--warning-color)', background: 'rgba(245, 158, 11, 0.1)', padding: '4px 8px', borderRadius: '4px', textAlign: 'center', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                            OTP: {table.current_otp}
+                          </div>
+                        )}
+                        
+                        {groupedAlerts[table.table_number] && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {groupedAlerts[table.table_number].messages.map((msg, idx) => (
+                              <div key={idx} style={{ 
+                                fontSize: '11px', 
+                                padding: '6px 8px', 
+                                borderRadius: '4px', 
+                                background: msg.type === 'CHECKOUT' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                color: msg.type === 'CHECKOUT' ? 'var(--danger-color)' : 'var(--warning-color)',
+                                borderLeft: `3px solid ${msg.type === 'CHECKOUT' ? 'var(--danger-color)' : 'var(--warning-color)'}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}>
+                                <Bell size={10} />
+                                <span>{msg.text}</span>
+                              </div>
+                            ))}
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              {groupedAlerts[table.table_number].needsCheckout && (
+                                <button 
+                                  className="modern-button danger" 
+                                  style={{ padding: '6px', fontSize: '10px', flex: 1 }}
+                                  onClick={(e) => { e.stopPropagation(); handleCheckout(table.table_number); }}
+                                >
+                                  Close & Paid
+                                </button>
+                              )}
+                              <button 
+                                className="modern-button" 
+                                style={{ padding: '6px', fontSize: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', flex: 1 }}
+                                onClick={(e) => { e.stopPropagation(); dismissTableAlerts(table.table_number); }}
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
             </>
           ) : (
             <div className="glass-panel animate-slide-up" style={{ minHeight: '600px' }}>
