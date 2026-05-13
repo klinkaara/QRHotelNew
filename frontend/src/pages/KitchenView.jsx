@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { ChefHat, LogOut } from 'lucide-react';
-import { API_BASE_URL } from '../api';
+import api, { API_BASE_URL } from '../api';
 
 const KitchenView = () => {
   const socket = useSocket();
@@ -33,7 +32,7 @@ const KitchenView = () => {
 
   const fetchOrders = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/orders/all`);
+      const res = await api.get(`/api/orders/all`);
       // Filter for orders that are Sent to kitchen or Preparing
       const activeOrders = res.data.filter(o => o.status === 'Sent to Kitchen' || o.status === 'Preparing');
       setOrders(activeOrders.map(o => ({
@@ -50,7 +49,7 @@ const KitchenView = () => {
 
   const updateStatus = async (orderId, newStatus) => {
     try {
-      await axios.post(`${API_BASE_URL}/api/orders/${orderId}/status?status=${newStatus}`);
+      await api.post(`/api/orders/${orderId}/status?status=${newStatus}`);
       if (newStatus === 'Ready') {
         setOrders(prev => prev.filter(o => o.order_id !== orderId));
       } else {

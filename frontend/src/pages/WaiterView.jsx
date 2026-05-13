@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api, { API_BASE_URL } from '../api';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { Bell, Check, Utensils, Receipt, ArrowLeft, Plus, Minus, Trash2, LogOut } from 'lucide-react';
-import { API_BASE_URL } from '../api';
 
 const WaiterView = () => {
   const socket = useSocket();
@@ -140,7 +139,7 @@ const WaiterView = () => {
 
   const fetchTables = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/sessions/tables`);
+      const res = await api.get(`/api/sessions/tables`);
       setTables(res.data);
       
       // Check if we need to sync the selected table from updated data
@@ -169,7 +168,7 @@ const WaiterView = () => {
 
   const fetchTableOrders = async (sessionId) => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/sessions/${sessionId}/orders`);
+      const res = await api.get(`/api/sessions/${sessionId}/orders`);
       setTableOrders(res.data);
     } catch (err) {
       console.error(err);
@@ -192,7 +191,7 @@ const WaiterView = () => {
     
     if(window.confirm(`Mark Table ${tableNum} as closed and paid?`)) {
       try {
-        await axios.post(`${API_BASE_URL}/api/sessions/${alertData.checkoutData.session_id}/close`);
+        await api.post(`/api/sessions/${alertData.checkoutData.session_id}/close`);
         dismissTableAlerts(tableNum);
         setSelectedTable(null);
         localStorage.removeItem('waiter_selected_table');
@@ -206,7 +205,7 @@ const WaiterView = () => {
   const handleForceCloseTable = async (tableNum, sessionId) => {
     if(window.confirm(`Customer paid, close the table ${tableNum}?`)) {
       try {
-        await axios.post(`${API_BASE_URL}/api/sessions/${sessionId}/close`);
+        await api.post(`/api/sessions/${sessionId}/close`);
         dismissTableAlerts(tableNum);
         setSelectedTable(null);
         localStorage.removeItem('waiter_selected_table');
@@ -221,7 +220,7 @@ const WaiterView = () => {
     if (processingOrders.has(orderId)) return;
     setProcessingOrders(prev => new Set(prev).add(orderId));
     try {
-      await axios.post(`${API_BASE_URL}/api/orders/${orderId}/send-to-kitchen`);
+      await api.post(`/api/orders/${orderId}/send-to-kitchen`);
       if (selectedTable && selectedTable.current_session_id) {
         fetchTableOrders(selectedTable.current_session_id);
       }
@@ -238,7 +237,7 @@ const WaiterView = () => {
 
   const updateOrderItem = async (itemId, newQuantity) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/orders/items/${itemId}?quantity=${newQuantity}`);
+      await api.put(`/api/orders/items/${itemId}?quantity=${newQuantity}`);
       if (selectedTable && selectedTable.current_session_id) {
         fetchTableOrders(selectedTable.current_session_id);
       }
@@ -249,7 +248,7 @@ const WaiterView = () => {
 
   const updateOrderRemarks = async (orderId, newRemarks) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/orders/${orderId}/remarks?remarks=${encodeURIComponent(newRemarks)}`);
+      await api.put(`/api/orders/${orderId}/remarks?remarks=${encodeURIComponent(newRemarks)}`);
       if (selectedTable && selectedTable.current_session_id) {
         fetchTableOrders(selectedTable.current_session_id);
       }

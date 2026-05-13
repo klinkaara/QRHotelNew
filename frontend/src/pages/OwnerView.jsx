@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import { Edit2, Plus, Trash2, Bell, Check, Receipt, ArrowLeft, Minus, LogOut } from 'lucide-react';
-import { API_BASE_URL } from '../api';
+import api, { API_BASE_URL } from '../api';
 
 const OwnerView = () => {
   const socket = useSocket();
@@ -163,7 +162,7 @@ const OwnerView = () => {
   const handleDeleteNote = async (id) => {
     if(window.confirm('Delete this note?')) {
       try {
-        await axios.delete(`${API_BASE_URL}/api/notes/${id}`);
+        await api.delete(`/api/notes/${id}`);
         fetchNotes();
       } catch (err) {
         console.error(err);
@@ -229,7 +228,7 @@ const OwnerView = () => {
 
   const fetchTables = async () => {
     try {
-      const res = await api.get('/api/sessions/tables');
+      const res = await api.get(`/api/sessions/tables`);
       setTables(res.data);
       
       let savedTableId = null;
@@ -271,7 +270,7 @@ const OwnerView = () => {
 
   const fetchTableOrders = async (sessionId) => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/sessions/${sessionId}/orders`);
+      const res = await api.get(`/api/sessions/${sessionId}/orders`);
       setTableOrders(res.data);
     } catch (err) {
       console.error(err);
@@ -294,7 +293,7 @@ const OwnerView = () => {
     
     if(window.confirm(`Mark Table ${tableNum} as closed and paid?`)) {
       try {
-        await axios.post(`${API_BASE_URL}/api/sessions/${alertData.checkoutData.session_id}/close`);
+        await api.post(`/api/sessions/${alertData.checkoutData.session_id}/close`);
         dismissTableAlerts(tableNum);
         setSelectedTable(null);
         localStorage.removeItem('owner_selected_table');
@@ -308,7 +307,7 @@ const OwnerView = () => {
   const handleForceCloseTable = async (tableNum, sessionId) => {
     if(window.confirm(`Customer paid, close the table ${tableNum}?`)) {
       try {
-        await axios.post(`${API_BASE_URL}/api/sessions/${sessionId}/close`);
+        await api.post(`/api/sessions/${sessionId}/close`);
         dismissTableAlerts(tableNum);
         setSelectedTable(null);
         localStorage.removeItem('owner_selected_table');
@@ -323,7 +322,7 @@ const OwnerView = () => {
     if (processingOrders.has(orderId)) return;
     setProcessingOrders(prev => new Set(prev).add(orderId));
     try {
-      await axios.post(`${API_BASE_URL}/api/orders/${orderId}/send-to-kitchen`);
+      await api.post(`/api/orders/${orderId}/send-to-kitchen`);
       if (selectedTable && selectedTable.current_session_id) {
         fetchTableOrders(selectedTable.current_session_id);
       }
@@ -340,7 +339,7 @@ const OwnerView = () => {
 
   const updateOrderItem = async (itemId, newQuantity) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/orders/items/${itemId}?quantity=${newQuantity}`);
+      await api.put(`/api/orders/items/${itemId}?quantity=${newQuantity}`);
       if (selectedTable && selectedTable.current_session_id) {
         fetchTableOrders(selectedTable.current_session_id);
       }
@@ -351,7 +350,7 @@ const OwnerView = () => {
 
   const updateOrderRemarks = async (orderId, newRemarks) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/orders/${orderId}/remarks?remarks=${encodeURIComponent(newRemarks)}`);
+      await api.put(`/api/orders/${orderId}/remarks?remarks=${encodeURIComponent(newRemarks)}`);
       if (selectedTable && selectedTable.current_session_id) {
         fetchTableOrders(selectedTable.current_session_id);
       }
@@ -379,9 +378,9 @@ const OwnerView = () => {
     e.preventDefault();
     try {
       if (editingItem) {
-        await axios.put(`${API_BASE_URL}/api/menu/${editingItem.id}`, formData);
+        await api.put(`/api/menu/${editingItem.id}`, formData);
       } else {
-        await axios.post(`${API_BASE_URL}/api/menu/`, formData);
+        await api.post(`/api/menu/`, formData);
       }
       fetchMenu();
       setEditingItem(null);
@@ -405,7 +404,7 @@ const OwnerView = () => {
   const handleDeleteMenu = async (id) => {
     if(window.confirm('Are you sure you want to delete this menu item?')) {
       try {
-        await axios.delete(`${API_BASE_URL}/api/menu/${id}`);
+        await api.delete(`/api/menu/${id}`);
         fetchMenu();
       } catch (err) {
         alert('Error deleting menu item');

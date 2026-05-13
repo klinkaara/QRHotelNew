@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
 import { useCart } from '../context/CartContext';
 import { ShoppingCart, ChefHat, CheckCircle, Clock, Trash2, Plus, Minus } from 'lucide-react';
-import { API_BASE_URL } from '../api';
+import api, { API_BASE_URL } from '../api';
 
 const CustomerView = () => {
   const { id } = useParams();
@@ -54,7 +53,7 @@ const CustomerView = () => {
       socket.on('order_status_update', async (data) => {
         if (session && session.id) {
           try {
-            const res = await axios.get(`${API_BASE_URL}/api/sessions/${session.id}/orders`);
+            const res = await api.get(`/api/sessions/${session.id}/orders`);
             setLiveOrders(res.data);
           } catch(err) { console.error(err); }
         } else {
@@ -73,18 +72,18 @@ const CustomerView = () => {
       });
       
       socket.on('menu_updated', () => {
-        axios.get(`${API_BASE_URL}/api/menu/`)
+        api.get(`/api/menu/`)
           .then(res => setMenu(res.data))
           .catch(console.error);
       });
     }
     
     // Fetch initial table status & menu
-    axios.get(`${API_BASE_URL}/api/sessions/table/${id}`)
+    api.get(`/api/sessions/table/${id}`)
       .then(res => setTableStatus(res.data.status))
       .catch(console.error);
       
-    axios.get(`${API_BASE_URL}/api/menu/`)
+    api.get(`/api/menu/`)
       .then(res => setMenu(res.data))
       .catch(console.error);
     return () => {
@@ -113,7 +112,7 @@ const CustomerView = () => {
   const startSession = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/sessions/start`, {
+      const res = await api.post(`/api/sessions/start`, {
         table_id: parseInt(id),
         customer_name: name,
         customer_phone: phone
@@ -128,7 +127,7 @@ const CustomerView = () => {
   const placeOrder = async () => {
     if (cart.length === 0) return;
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/orders/`, {
+      const res = await api.post(`/api/orders/`, {
         session_id: session.id,
         items: cart
       });
@@ -137,10 +136,10 @@ const CustomerView = () => {
       if (sessionOtp) {
         // Auto-verify subsequent orders
         try {
-          await axios.post(`${API_BASE_URL}/api/orders/${res.data.id}/verify-otp?otp=${sessionOtp}`);
+          await api.post(`/api/orders/${res.data.id}/verify-otp?otp=${sessionOtp}`);
           setOrderState('TRACKING');
           clearCart();
-          const ordersRes = await axios.get(`${API_BASE_URL}/api/sessions/${session.id}/orders`);
+          const ordersRes = await api.get(`/api/sessions/${session.id}/orders`);
           setLiveOrders(ordersRes.data);
         } catch(err) {
           setOrderState('OTP');
@@ -155,7 +154,7 @@ const CustomerView = () => {
 
   const verifyOtp = async () => {
     try {
-      await axios.post(`${API_BASE_URL}/api/orders/${currentOrderId}/verify-otp?otp=${otpInput}`);
+      await api.post(`/api/orders/${currentOrderId}/verify-otp?otp=${otpInput}`);
       setSessionOtp(otpInput); // Remember OTP for future orders
       setOrderState('TRACKING');
       clearCart();
@@ -171,7 +170,7 @@ const CustomerView = () => {
   const requestCheckout = async () => {
     if(window.confirm('Are you sure you want to request the bill?')) {
       try {
-        await axios.post(`${API_BASE_URL}/api/sessions/${session.id}/checkout`);
+        await api.post(`/api/sessions/${session.id}/checkout`);
         setOrderState('THANKS');
       } catch (err) {
         alert('Error requesting checkout');
