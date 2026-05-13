@@ -495,7 +495,7 @@ const OwnerView = () => {
                             {groupedAlerts[table.table_number].messages.map((msg, idx) => {
                               let bgColor = 'rgba(245, 158, 11, 0.15)';
                               let textColor = 'var(--warning-color)';
-                              
+
                               if (msg.type === 'CHECKOUT') {
                                 bgColor = 'rgba(239, 68, 68, 0.15)';
                                 textColor = 'var(--danger-color)';
