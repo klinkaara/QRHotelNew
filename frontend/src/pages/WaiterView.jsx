@@ -490,10 +490,9 @@ const WaiterView = () => {
                )}
             </div>
           )}
-        </div>
-      </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default WaiterView;
