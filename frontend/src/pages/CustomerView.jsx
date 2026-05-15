@@ -13,43 +13,53 @@ const CustomerView = () => {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // AUTH STATE - Force login screen by default
+  // AUTH & SESSION STATE
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+  const [sessionId, setSessionId] = useState(localStorage.getItem(`table_session_id_${tableId}`) || null);
+  const [customerName, setCustomerName] = useState(localStorage.getItem(`table_name_${tableId}`) || '');
+  const [customerPhone, setCustomerPhone] = useState(localStorage.getItem(`table_phone_${tableId}`) || '');
   const [authError, setAuthError] = useState('');
 
   // Orders & Table State
   const [myOrders, setMyOrders] = useState([]);
   const [tableStatus, setTableStatus] = useState('Available');
 
-  // Initial check for existing session on THIS specific table
+  // Initial Check - Verify session with backend
   useEffect(() => {
-    const savedLogin = localStorage.getItem(`table_session_${tableId}`);
-    if (savedLogin === 'true') {
-      const savedName = localStorage.getItem(`table_name_${tableId}`);
-      const savedPhone = localStorage.getItem(`table_phone_${tableId}`);
-      if (savedName && savedPhone) {
-        setCustomerName(savedName);
-        setCustomerPhone(savedPhone);
-        setIsLoggedIn(true);
-      } else {
+    const verifySession = async () => {
+      if (!sessionId) {
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const tableRes = await api.get(`/api/sessions/table/${tableId}`);
+        // If table is Available or has a different session, clear local session
+        if (tableRes.data.status === 'Available' || !tableRes.data.current_session_id || tableRes.data.current_session_id !== parseInt(sessionId)) {
+          handleLogout();
+        } else {
+          setIsLoggedIn(true);
+        }
+      } catch (err) {
+        console.error("Session verification failed", err);
+        handleLogout();
+      } finally {
         setLoading(false);
       }
-    } else {
-      setLoading(false);
-    }
+    };
+    
+    verifySession();
   }, [tableId]);
 
   // Fetch data only if logged in
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && sessionId) {
       fetchMenu();
       fetchTableData();
       const interval = setInterval(fetchTableData, 10000);
       return () => clearInterval(interval);
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, sessionId]);
 
   const fetchMenu = async () => {
     try {
@@ -66,46 +76,69 @@ const CustomerView = () => {
 
   const fetchTableData = async () => {
     try {
-      const tableRes = await api.get(`/api/tables/${tableId}`);
-      if (tableRes.data.status === 'Available') {
-        // Table was reset/closed by owner
+      const tableRes = await api.get(`/api/sessions/table/${tableId}`);
+      
+      // Verification: If table is Available or has a different session, logout
+      if (tableRes.data.status === 'Available' || !tableRes.data.current_session_id || tableRes.data.current_session_id !== parseInt(sessionId)) {
         handleLogout();
         return;
       }
+      
       setTableStatus(tableRes.data.status);
-      const ordersRes = await api.get(`/api/orders?table_id=${tableId}`);
+      
+      // Fetch orders for this specific session
+      const ordersRes = await api.get(`/api/sessions/${sessionId}/orders`);
       setMyOrders(ordersRes.data);
       setLoading(false);
     } catch (err) {
-      console.error("Table data fetch failed", err);
+      console.error("Session data fetch failed", err);
+      // Don't logout on temporary network error, but if it's a 404/403, we should
+      if (err.response?.status === 404 || err.response?.status === 400) {
+        handleLogout();
+      }
       setLoading(false);
     }
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!customerName.trim() || !customerPhone.trim()) {
-      setAuthError('Please enter your Name and Phone Number.');
-      return;
-    }
-    if (customerPhone.length < 10) {
-      setAuthError('Please enter a valid phone number.');
+      setAuthError('Name and Phone are required.');
       return;
     }
     
-    // Save session for this table
-    localStorage.setItem(`table_session_${tableId}`, 'true');
-    localStorage.setItem(`table_name_${tableId}`, customerName);
-    localStorage.setItem(`table_phone_${tableId}`, customerPhone);
-    setIsLoggedIn(true);
-    setAuthError('');
+    try {
+      // 1. Start the Session on the server
+      const res = await api.post('/api/sessions/start', {
+        table_id: parseInt(tableId),
+        customer_name: customerName,
+        customer_phone: customerPhone
+      });
+      
+      const newSessionId = res.data.id;
+      
+      // 2. Save session locally
+      localStorage.setItem(`table_session_id_${tableId}`, newSessionId);
+      localStorage.setItem(`table_name_${tableId}`, customerName);
+      localStorage.setItem(`table_phone_${tableId}`, customerPhone);
+      
+      setSessionId(newSessionId);
+      setIsLoggedIn(true);
+      setAuthError('');
+    } catch (err) {
+      console.error("Login/Session start failed", err);
+      setAuthError(err.response?.data?.detail || 'Table is busy or connection failed.');
+    }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem(`table_session_${tableId}`);
+    localStorage.removeItem(`table_session_id_${tableId}`);
     localStorage.removeItem(`table_name_${tableId}`);
     localStorage.removeItem(`table_phone_${tableId}`);
     setIsLoggedIn(false);
+    setSessionId(null);
+    setCustomerName('');
+    setCustomerPhone('');
     setCart([]);
   };
 
@@ -135,36 +168,39 @@ const CustomerView = () => {
   };
 
   const placeOrder = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || !sessionId) return;
     try {
-      await api.post('/api/orders', {
-        table_id: tableId,
-        items: cart.map(i => ({ menu_item_id: i.id, quantity: i.quantity })),
-        customer_name: customerName
+      await api.post('/api/orders/', {
+        session_id: parseInt(sessionId),
+        items: cart.map(i => ({ 
+          menu_item_id: i.id, 
+          quantity: i.quantity,
+          special_instructions: "" 
+        }))
       });
       alert('Order placed successfully!');
       setCart([]);
       fetchTableData();
     } catch (err) {
-      console.error(err);
-      alert('Failed to place order');
+      console.error("Order placement failed", err);
+      alert(err.response?.data?.detail || 'Failed to place order. Please try again.');
     }
   };
 
   const requestBill = async () => {
-    if (!window.confirm('Request the bill for Table #' + tableId + '?')) return;
+    if (!window.confirm('Request the bill for Table #' + tableId + '?') || !sessionId) return;
     try {
-      await api.put(`/api/tables/${tableId}/status`, { status: 'Payment' });
+      await api.post(`/api/sessions/${sessionId}/checkout`);
       alert('Bill requested! Staff will be with you shortly.');
       fetchTableData();
     } catch (err) {
-      console.error(err);
+      console.error("Bill request failed", err);
+      alert('Failed to request bill');
     }
   };
 
   if (loading && !isLoggedIn) return <div className="loading" style={{ color: 'white', textAlign: 'center', marginTop: '100px' }}>Loading...</div>;
 
-  // IF NOT LOGGED IN - ALWAYS SHOW THIS SCREEN
   if (!isLoggedIn) {
     return (
       <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '90vh' }}>
@@ -173,32 +209,18 @@ const CustomerView = () => {
             <LogIn color="white" size={32} />
           </div>
           <h2 style={{ marginBottom: '12px', fontSize: '24px', fontWeight: '800' }}>Table #{tableId}</h2>
-          <p style={{ color: '#94a3b8', marginBottom: '32px' }}>Enter your details to view the menu</p>
+          <p style={{ color: '#94a3b8', marginBottom: '32px' }}>Scan to Order • Quick & Easy</p>
           
           <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
             <div style={{ marginBottom: '20px' }}>
               <label style={{ color: '#94a3b8', fontSize: '13px', display: 'block', marginBottom: '8px' }}>Name</label>
-              <input 
-                type="text" 
-                placeholder="Full Name" 
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="modern-input"
-                required
-              />
+              <input type="text" placeholder="Full Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="modern-input" required />
             </div>
             <div style={{ marginBottom: '32px' }}>
               <label style={{ color: '#94a3b8', fontSize: '13px', display: 'block', marginBottom: '8px' }}>Phone Number</label>
-              <input 
-                type="tel" 
-                placeholder="Phone Number" 
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                className="modern-input"
-                required
-              />
+              <input type="tel" placeholder="Phone Number" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="modern-input" required />
             </div>
-            {authError && <p style={{ color: 'var(--danger-color)', marginBottom: '16px', textAlign: 'center' }}>{authError}</p>}
+            {authError && <p style={{ color: 'var(--danger-color)', marginBottom: '16px', textAlign: 'center', fontSize: '14px' }}>{authError}</p>}
             <button type="submit" className="modern-button success">View Menu</button>
           </form>
         </div>
@@ -211,7 +233,7 @@ const CustomerView = () => {
       <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ fontSize: '32px', fontWeight: '900', margin: 0 }}>Welcome!</h1>
-          <p style={{ color: '#94a3b8', fontSize: '18px', marginTop: '4px' }}>Table #{tableId} • Hello, {customerName}</p>
+          <p style={{ color: '#94a3b8', fontSize: '18px', marginTop: '4px' }}>Table #{tableId} • {customerName}</p>
         </div>
         <button onClick={requestBill} className="modern-button warning" style={{ width: 'auto', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Receipt size={18} /> Request Bill
@@ -248,19 +270,25 @@ const CustomerView = () => {
             ))}
           </div>
 
-          {/* My Orders Section */}
+          {/* My Orders */}
           {myOrders.length > 0 && (
             <div className="glass-panel" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.05)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontSize: '16px', color: 'var(--accent-color)' }}>
-                <Clock size={18} /> Your Orders at this Table
+                <Clock size={18} /> Order History
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {myOrders.map(order => (
-                  <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                    <span>{order.quantity}x {order.menu_item_name}</span>
-                    <span style={{ 
-                      padding: '2px 8px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', fontSize: '11px' 
-                    }}>{order.status}</span>
+                  <div key={order.id} style={{ paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#94a3b8' }}>
+                      <span>Order #{order.id}</span>
+                      <span>{order.status}</span>
+                    </div>
+                    {order.items?.map((item, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginTop: '4px' }}>
+                        <span>{item.quantity}x {item.name}</span>
+                        <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
@@ -270,11 +298,11 @@ const CustomerView = () => {
 
         {/* Cart */}
         <div className="glass-panel" style={{ height: 'fit-content', position: 'sticky', top: '100px' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}><ShoppingCart /> Your Order</h3>
-          {cart.length === 0 ? <p style={{ color: '#94a3b8' }}>Select items to order</p> : (
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}><ShoppingCart /> Cart</h3>
+          {cart.length === 0 ? <p style={{ color: '#94a3b8' }}>Empty</p> : (
             <>
               {cart.map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{item.name}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
@@ -285,7 +313,6 @@ const CustomerView = () => {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 'bold' }}>₹{(item.price * item.quantity).toFixed(2)}</div>
-                    <button onClick={() => removeFromCart(idx)} style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', marginTop: '8px' }}><Trash2 size={16}/></button>
                   </div>
                 </div>
               ))}
@@ -293,7 +320,7 @@ const CustomerView = () => {
                 <span>Total</span>
                 <span style={{ color: 'var(--accent-color)' }}>₹{cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
               </div>
-              <button className="modern-button success" onClick={placeOrder}>Confirm Order</button>
+              <button className="modern-button success" onClick={placeOrder}>Place Order</button>
             </>
           )}
         </div>
