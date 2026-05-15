@@ -11,9 +11,9 @@ const OwnerView = () => {
   const [menu, setMenu] = useState([]);
   const [activeTab, setActiveTab] = useState(() => {
     const saved = localStorage.getItem('owner_active_tab');
-    const validTabs = ['dashboard', 'menu', 'daily-orders', 'analytics', 'notes'];
+    const validTabs = ['dashboard', 'menu', 'analytics', 'notes'];
     return (saved && validTabs.includes(saved)) ? saved : 'dashboard';
-  }); // dashboard, menu, daily-orders, analytics, notes
+  }); // dashboard, menu, analytics, notes
 
   // Waiter-like State
   const [groupedAlerts, setGroupedAlerts] = useState({});
@@ -219,8 +219,7 @@ const OwnerView = () => {
     localStorage.setItem('owner_active_tab', activeTab);
     if (activeTab === 'analytics') {
       fetchAnalytics();
-    } else if (activeTab === 'daily-orders') {
-      fetchDailyOrders();
+      fetchDailyOrders(selectedDate);
     } else if (activeTab === 'notes') {
       fetchNotes();
     }
@@ -431,8 +430,7 @@ const OwnerView = () => {
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button className={`modern-button ${activeTab === 'dashboard' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('dashboard')}>Overview</button>
           <button className={`modern-button ${activeTab === 'menu' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('menu')}>Menu</button>
-          <button className={`modern-button ${activeTab === 'daily-orders' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('daily-orders')}>Daily Orders</button>
-          <button className={`modern-button ${activeTab === 'analytics' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('analytics')}>Analytics</button>
+          <button className={`modern-button ${activeTab === 'analytics' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('analytics')}>Analytics & History</button>
           <button className={`modern-button ${activeTab === 'notes' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('notes')}>Notes</button>
           <button onClick={logout} className="modern-button danger" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <LogOut size={18} />
@@ -748,72 +746,62 @@ const OwnerView = () => {
                 <h3 style={{ color: '#94a3b8' }}>Active Tables</h3>
                 <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{dashboardSummary.active_tables}</p>
               </div>
-              <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
-                <h3 style={{ color: '#94a3b8' }}>Active Menu Items</h3>
-                <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{dashboardSummary.active_menu_items}</p>
-              </div>
             </div>
           ) : <p>Loading summary...</p>}
 
-          <div className="glass-panel">
-            <h3 style={{ marginBottom: '24px' }}>Historical Revenue (Last 6 Months)</h3>
-            {historicalData.length > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '300px', padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
-                {historicalData.map(data => {
-                  const maxRevenue = Math.max(...historicalData.map(d => d.revenue));
-                  const heightPercentage = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
-                  return (
-                    <div key={data.sort_key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                      <span style={{ fontSize: '14px', marginBottom: '8px', color: 'white', fontWeight: 'bold' }}>${(data.revenue || 0).toFixed(0)}</span>
-                      <div style={{ width: '100%', maxWidth: '60px', height: `${heightPercentage}%`, background: 'var(--primary-color)', borderRadius: '8px 8px 0 0', transition: 'height 0.5s ease-out' }}></div>
-                      <span style={{ marginTop: '12px', fontSize: '14px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{data.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : <p>No historical data available.</p>}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'daily-orders' && (
-        <div className="animate-slide-up glass-panel">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ margin: 0 }}>Orders by Date</h3>
-            <input
-              type="date"
-              className="modern-input"
-              style={{ width: 'auto', margin: 0 }}
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-          </div>
-          {dailyOrders.length === 0 ? <p style={{ color: '#94a3b8' }}>No active or completed sessions found for this date.</p> : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {dailyOrders.map(session => (
-                <div key={session.id} style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <strong style={{ fontSize: '18px' }}>Table {session.table_number}</strong>
-                      <div style={{ marginTop: '8px', fontSize: '16px', color: '#cbd5e1' }}>
-                        Customer: <span style={{ color: 'white' }}>{session.customer_name !== 'N/A' ? session.customer_name : 'Guest'}</span>
-                        {session.customer_phone !== 'N/A' && ` (${session.customer_phone})`}
+          <div className="responsive-grid">
+            <div className="glass-panel">
+              <h3 style={{ marginBottom: '24px' }}>Historical Revenue</h3>
+              {historicalData.length > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '300px', padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                  {historicalData.map(data => {
+                    const maxRevenue = Math.max(...historicalData.map(d => d.revenue));
+                    const heightPercentage = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
+                    return (
+                      <div key={data.sort_key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                        <span style={{ fontSize: '10px', marginBottom: '8px', color: 'white', fontWeight: 'bold' }}>${(data.revenue || 0).toFixed(0)}</span>
+                        <div style={{ width: '100%', maxWidth: '40px', height: `${heightPercentage}%`, background: 'var(--primary-color)', borderRadius: '8px 8px 0 0', transition: 'height 0.5s ease-out' }}></div>
+                        <span style={{ marginTop: '12px', fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{data.label}</span>
                       </div>
-                      <div style={{ marginTop: '4px', fontSize: '14px', color: '#94a3b8' }}>
-                        Time: {new Date(session.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                      <span className={`status-badge status-${session.status.replace(' ', '')}`}>
-                        {session.status === 'Closed' ? 'Payment Done' : session.status}
-                      </span>
-                      <strong style={{ fontSize: '24px', color: 'var(--accent-color)' }}>${(session.total_amount || 0).toFixed(2)}</strong>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
-              ))}
+              ) : <p>No historical data available.</p>}
             </div>
-          )}
+
+            <div className="glass-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h3 style={{ margin: 0 }}>Orders by Date</h3>
+                <input
+                  type="date"
+                  className="modern-input"
+                  style={{ width: 'auto', margin: 0 }}
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                />
+              </div>
+              <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
+                {dailyOrders.length === 0 ? <p style={{ color: '#94a3b8' }}>No data for this date.</p> : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {dailyOrders.map(session => (
+                      <div key={session.id} style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', fontSize: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <strong>Table {session.table_number}</strong>
+                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{new Date(session.created_at).toLocaleTimeString()}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>${(session.total_amount || 0).toFixed(2)}</div>
+                            <div style={{ fontSize: '10px', opacity: 0.7 }}>{session.status}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

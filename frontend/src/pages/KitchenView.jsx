@@ -14,11 +14,20 @@ const KitchenView = () => {
 
     if (socket) {
       socket.on('order_sent_to_kitchen', (data) => {
-        setOrders(prev => [...prev, { ...data, status: data.status || 'Sent to Kitchen' }]);
+        // Ensure order_id is present for consistency with fetchOrders mapping
+        const newOrder = {
+          ...data,
+          order_id: data.id || data.order_id,
+          status: data.status || 'Sent to Kitchen'
+        };
+        setOrders(prev => [...prev, newOrder]);
       });
       
       socket.on('order_details_updated', () => fetchOrders());
-      socket.on('order_status_update', () => fetchOrders());
+      socket.on('order_status_update', (data) => {
+        // If it's a specific status update, we can update locally or just re-fetch
+        fetchOrders();
+      });
     }
 
     return () => {
