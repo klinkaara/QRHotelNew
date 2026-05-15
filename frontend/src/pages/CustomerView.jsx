@@ -5,30 +5,49 @@ import { ShoppingCart, Plus, Minus, Trash2, User, Phone, LogIn, Receipt, Clock, 
 
 const CustomerView = () => {
   const { tableId } = useParams();
+  
+  // Menu & Cart State
   const [menu, setMenu] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Auth & Persistence
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return localStorage.getItem(`table_${tableId}_logged_in`) === 'true';
-  });
-  const [customerName, setCustomerName] = useState(localStorage.getItem(`table_${tableId}_customer_name`) || '');
-  const [customerPhone, setCustomerPhone] = useState(localStorage.getItem(`table_${tableId}_customer_phone`) || '');
-  const [myOrders, setMyOrders] = useState([]);
-  const [tableStatus, setTableStatus] = useState('Available');
+  // AUTH STATE - Force login screen by default
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [authError, setAuthError] = useState('');
 
+  // Orders & Table State
+  const [myOrders, setMyOrders] = useState([]);
+  const [tableStatus, setTableStatus] = useState('Available');
+
+  // Initial check for existing session on THIS specific table
+  useEffect(() => {
+    const savedLogin = localStorage.getItem(`table_session_${tableId}`);
+    if (savedLogin === 'true') {
+      const savedName = localStorage.getItem(`table_name_${tableId}`);
+      const savedPhone = localStorage.getItem(`table_phone_${tableId}`);
+      if (savedName && savedPhone) {
+        setCustomerName(savedName);
+        setCustomerPhone(savedPhone);
+        setIsLoggedIn(true);
+      } else {
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
+    }
+  }, [tableId]);
+
+  // Fetch data only if logged in
   useEffect(() => {
     if (isLoggedIn) {
       fetchMenu();
       fetchTableData();
       const interval = setInterval(fetchTableData, 10000);
       return () => clearInterval(interval);
-    } else {
-      setLoading(false);
     }
   }, [isLoggedIn]);
 
@@ -41,7 +60,7 @@ const CustomerView = () => {
       setCategories(uniqueCats);
       if (uniqueCats.length > 0) setSelectedCategory(uniqueCats[0]);
     } catch (err) {
-      console.error(err);
+      console.error("Menu fetch failed", err);
     }
   };
 
@@ -49,9 +68,8 @@ const CustomerView = () => {
     try {
       const tableRes = await api.get(`/api/tables/${tableId}`);
       if (tableRes.data.status === 'Available') {
-        // Table was reset by owner
-        localStorage.removeItem(`table_${tableId}_logged_in`);
-        setIsLoggedIn(false);
+        // Table was reset/closed by owner
+        handleLogout();
         return;
       }
       setTableStatus(tableRes.data.status);
@@ -59,7 +77,7 @@ const CustomerView = () => {
       setMyOrders(ordersRes.data);
       setLoading(false);
     } catch (err) {
-      console.error(err);
+      console.error("Table data fetch failed", err);
       setLoading(false);
     }
   };
@@ -67,13 +85,28 @@ const CustomerView = () => {
   const handleLogin = (e) => {
     e.preventDefault();
     if (!customerName.trim() || !customerPhone.trim()) {
-      setAuthError('Name and Phone are required.');
+      setAuthError('Please enter your Name and Phone Number.');
       return;
     }
+    if (customerPhone.length < 10) {
+      setAuthError('Please enter a valid phone number.');
+      return;
+    }
+    
+    // Save session for this table
+    localStorage.setItem(`table_session_${tableId}`, 'true');
+    localStorage.setItem(`table_name_${tableId}`, customerName);
+    localStorage.setItem(`table_phone_${tableId}`, customerPhone);
     setIsLoggedIn(true);
-    localStorage.setItem(`table_${tableId}_logged_in`, 'true');
-    localStorage.setItem(`table_${tableId}_customer_name`, customerName);
-    localStorage.setItem(`table_${tableId}_customer_phone`, customerPhone);
+    setAuthError('');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(`table_session_${tableId}`);
+    localStorage.removeItem(`table_name_${tableId}`);
+    localStorage.removeItem(`table_phone_${tableId}`);
+    setIsLoggedIn(false);
+    setCart([]);
   };
 
   const addToCart = (item) => {
@@ -122,15 +155,16 @@ const CustomerView = () => {
     if (!window.confirm('Request the bill for Table #' + tableId + '?')) return;
     try {
       await api.put(`/api/tables/${tableId}/status`, { status: 'Payment' });
-      alert('Bill requested! Thank you for dining with us.');
+      alert('Bill requested! Staff will be with you shortly.');
       fetchTableData();
     } catch (err) {
       console.error(err);
     }
   };
 
-  if (loading) return <div className="loading" style={{ color: 'white', textAlign: 'center', marginTop: '100px' }}>Loading...</div>;
+  if (loading && !isLoggedIn) return <div className="loading" style={{ color: 'white', textAlign: 'center', marginTop: '100px' }}>Loading...</div>;
 
+  // IF NOT LOGGED IN - ALWAYS SHOW THIS SCREEN
   if (!isLoggedIn) {
     return (
       <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '90vh' }}>
@@ -138,13 +172,34 @@ const CustomerView = () => {
           <div style={{ background: 'var(--accent-color)', width: '72px', height: '72px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto' }}>
             <LogIn color="white" size={32} />
           </div>
-          <h2 style={{ marginBottom: '12px', fontSize: '24px', fontWeight: '800' }}>Welcome!</h2>
-          <p style={{ color: '#94a3b8', marginBottom: '40px' }}>Enter details for Table #{tableId}</p>
+          <h2 style={{ marginBottom: '12px', fontSize: '24px', fontWeight: '800' }}>Table #{tableId}</h2>
+          <p style={{ color: '#94a3b8', marginBottom: '32px' }}>Enter your details to view the menu</p>
+          
           <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
-            <input type="text" placeholder="Full Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="modern-input" required />
-            <input type="tel" placeholder="Phone Number" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="modern-input" required />
-            {authError && <p style={{ color: 'var(--danger-color)', marginBottom: '16px' }}>{authError}</p>}
-            <button type="submit" className="modern-button success">Enter Restaurant</button>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ color: '#94a3b8', fontSize: '13px', display: 'block', marginBottom: '8px' }}>Name</label>
+              <input 
+                type="text" 
+                placeholder="Full Name" 
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="modern-input"
+                required
+              />
+            </div>
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ color: '#94a3b8', fontSize: '13px', display: 'block', marginBottom: '8px' }}>Phone Number</label>
+              <input 
+                type="tel" 
+                placeholder="Phone Number" 
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className="modern-input"
+                required
+              />
+            </div>
+            {authError && <p style={{ color: 'var(--danger-color)', marginBottom: '16px', textAlign: 'center' }}>{authError}</p>}
+            <button type="submit" className="modern-button success">View Menu</button>
           </form>
         </div>
       </div>
@@ -155,25 +210,24 @@ const CustomerView = () => {
     <div className="app-container">
       <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: '32px', fontWeight: '900', margin: 0, letterSpacing: '-0.5px' }}>Welcome to our Restaurant</h1>
+          <h1 style={{ fontSize: '32px', fontWeight: '900', margin: 0 }}>Welcome!</h1>
           <p style={{ color: '#94a3b8', fontSize: '18px', marginTop: '4px' }}>Table #{tableId} • Hello, {customerName}</p>
         </div>
-        <button onClick={requestBill} className="modern-button warning" style={{ width: 'auto', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+        <button onClick={requestBill} className="modern-button warning" style={{ width: 'auto', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Receipt size={18} /> Request Bill
         </button>
       </header>
 
       <div className="customer-layout">
         <div style={{ minWidth: 0 }}>
-          {/* Categories */}
+          {/* Categories Bar */}
           <div style={{ position: 'sticky', top: '0', zIndex: '100', background: 'var(--bg-color)', paddingBottom: '16px' }}>
             <div className="category-scroll hide-scrollbar" style={{ display: 'flex', gap: '12px', overflowX: 'auto', padding: '8px 0' }}>
               {categories.map(cat => (
                 <button key={cat} onClick={() => setSelectedCategory(cat)} style={{
                   padding: '10px 20px', borderRadius: '12px', border: '1px solid var(--glass-border)',
                   background: selectedCategory === cat ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
-                  color: 'white', whiteSpace: 'nowrap', fontWeight: 'bold', fontSize: '14px',
-                  boxShadow: selectedCategory === cat ? '0 4px 15px rgba(16, 185, 129, 0.4)' : 'none'
+                  color: 'white', whiteSpace: 'nowrap', fontWeight: 'bold'
                 }}>
                   {cat}
                 </button>
@@ -186,32 +240,27 @@ const CustomerView = () => {
             {menu.filter(i => i.category === selectedCategory).map(item => (
               <div key={item.id} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '16px' }}>{item.name}</h4>
-                  <p style={{ color: 'var(--accent-color)', fontWeight: 'bold', marginTop: '4px', fontSize: '15px' }}>₹{Number(item.price).toFixed(2)}</p>
+                  <h4 style={{ margin: 0 }}>{item.name}</h4>
+                  <p style={{ color: 'var(--accent-color)', fontWeight: 'bold', marginTop: '4px' }}>₹{Number(item.price).toFixed(2)}</p>
                 </div>
-                <button onClick={() => addToCart(item)} className="modern-button success" style={{ width: 'auto', padding: '8px 20px', fontSize: '14px' }}>Add</button>
+                <button onClick={() => addToCart(item)} className="modern-button success" style={{ width: 'auto', padding: '8px 20px' }}>Add</button>
               </div>
             ))}
           </div>
 
-          {/* Active Orders Logic Section */}
+          {/* My Orders Section */}
           {myOrders.length > 0 && (
-            <div className="glass-panel animate-slide-up" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.05)' }}>
+            <div className="glass-panel" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.05)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontSize: '16px', color: 'var(--accent-color)' }}>
-                <Clock size={18} /> Your Active Orders
+                <Clock size={18} /> Your Orders at this Table
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {myOrders.map(order => (
-                  <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontWeight: '600' }}>{order.quantity}x {order.menu_item_name}</div>
-                    <div style={{ 
-                      padding: '4px 10px', 
-                      borderRadius: '20px', 
-                      background: order.status === 'Ready' ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
-                      color: 'white',
-                      fontSize: '11px',
-                      fontWeight: 'bold'
-                    }}>{order.status}</div>
+                  <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                    <span>{order.quantity}x {order.menu_item_name}</span>
+                    <span style={{ 
+                      padding: '2px 8px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', fontSize: '11px' 
+                    }}>{order.status}</span>
                   </div>
                 ))}
               </div>
@@ -219,10 +268,10 @@ const CustomerView = () => {
           )}
         </div>
 
-        {/* Cart Panel */}
-        <div className="glass-panel" style={{ height: 'fit-content', position: 'sticky', top: '100px', padding: '24px' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}><ShoppingCart /> New Order</h3>
-          {cart.length === 0 ? <p style={{ color: '#94a3b8', textAlign: 'center', padding: '20px 0' }}>Select items to order</p> : (
+        {/* Cart */}
+        <div className="glass-panel" style={{ height: 'fit-content', position: 'sticky', top: '100px' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}><ShoppingCart /> Your Order</h3>
+          {cart.length === 0 ? <p style={{ color: '#94a3b8' }}>Select items to order</p> : (
             <>
               {cart.map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -230,7 +279,7 @@ const CustomerView = () => {
                     <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{item.name}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
                       <button onClick={() => updateQuantity(idx, -1)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><Minus size={14}/></button>
-                      <span style={{ fontWeight: 'bold' }}>{item.quantity}</span>
+                      <span>{item.quantity}</span>
                       <button onClick={() => updateQuantity(idx, 1)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><Plus size={14}/></button>
                     </div>
                   </div>
@@ -244,11 +293,15 @@ const CustomerView = () => {
                 <span>Total</span>
                 <span style={{ color: 'var(--accent-color)' }}>₹{cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
               </div>
-              <button className="modern-button success" onClick={placeOrder} style={{ padding: '16px' }}>Place Order</button>
+              <button className="modern-button success" onClick={placeOrder}>Confirm Order</button>
             </>
           )}
         </div>
       </div>
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 };
