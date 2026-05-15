@@ -37,11 +37,15 @@ const OwnerView = () => {
 
   // Menu form state
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState({ name: '', description: '', price: '', category: 'Veg Starters', is_active: true });
-  const categories = [
-    'Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 
-    'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg', 'Other'
-  ];
+  const [formData, setFormData] = useState({ name: '', description: '', price: '', category: '', is_active: true });
+  const [categories, setCategories] = useState(() => {
+    const saved = localStorage.getItem('owner_menu_categories');
+    return saved ? JSON.parse(saved) : [
+      'Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 
+      'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg'
+    ];
+  });
+  const [newCategory, setNewCategory] = useState('');
 
   // Analytics State
   const [dashboardSummary, setDashboardSummary] = useState(null);
@@ -137,13 +141,24 @@ const OwnerView = () => {
     }
   };
 
-  const fetchNotes = async () => {
-    try {
-      const res = await api.get('/api/notes/');
-      setNotes(res.data);
-    } catch (err) {
-      console.error(err);
+  useEffect(() => {
+    localStorage.setItem('owner_menu_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  const handleAddCategory = () => {
+    if (!newCategory.trim()) return;
+    if (!categories.includes(newCategory.trim())) {
+      setCategories([...categories, newCategory.trim()]);
     }
+    setNewCategory('');
+  };
+
+  const handleDeleteCategory = (cat) => {
+    if (menu.some(item => item.category === cat)) {
+      alert("Cannot delete category while items are still assigned to it.");
+      return;
+    }
+    setCategories(categories.filter(c => c !== cat));
   };
 
   const fetchAnalytics = async (filter, custom = null) => {
@@ -748,58 +763,103 @@ const OwnerView = () => {
       )}
 
       {activeTab === 'menu' && (
-        <div className="responsive-grid">
-          <div className="glass-panel" style={{ height: 'fit-content' }}>
-            <h3 style={{ marginBottom: '16px' }}>{editingItem ? 'Edit Item' : 'Add New Item'}</h3>
-            <form onSubmit={handleMenuSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input className="modern-input" style={{ marginBottom: 0 }} placeholder="Item Name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
-              <input className="modern-input" style={{ marginBottom: 0 }} placeholder="Description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
-              <input type="number" step="0.01" className="modern-input" style={{ marginBottom: 0 }} placeholder="Price (₹)" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} required />
-              <select className="modern-input" style={{ marginBottom: 0 }} value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input type="checkbox" checked={formData.is_active} onChange={e => setFormData({ ...formData, is_active: e.target.checked })} />
-                Active on Menu
-              </label>
-              <button type="submit" className="modern-button success" style={{ marginTop: '8px' }}>{editingItem ? 'Update Item' : 'Add Item'}</button>
-              {editingItem && <button type="button" className="modern-button" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }} onClick={() => { setEditingItem(null); setFormData({ name: '', description: '', price: '', category: 'Veg Starters', is_active: true }); }}>Cancel</button>}
-            </form>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div className="responsive-grid">
+            <div className="glass-panel" style={{ height: 'fit-content' }}>
+              <h3 style={{ marginBottom: '16px' }}>Manage Categories</h3>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '16px' }}>Add categories first, then assign items to them.</p>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                <input 
+                  className="modern-input" 
+                  style={{ marginBottom: 0 }} 
+                  placeholder="New Category (e.g. Drinks)" 
+                  value={newCategory} 
+                  onChange={e => setNewCategory(e.target.value)} 
+                />
+                <button className="modern-button success" style={{ width: 'auto' }} onClick={handleAddCategory}>Add</button>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {categories.map(cat => (
+                  <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '20px', border: '1px solid var(--glass-border)', fontSize: '14px' }}>
+                    {cat}
+                    {cat !== 'Uncategorized' && <Trash2 size={14} style={{ cursor: 'pointer', color: 'var(--danger-color)' }} onClick={() => handleDeleteCategory(cat)} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="glass-panel" style={{ height: 'fit-content' }}>
+              <h3 style={{ marginBottom: '16px' }}>{editingItem ? 'Edit Item' : 'Add New Item'}</h3>
+              <form onSubmit={handleMenuSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <input className="modern-input" style={{ marginBottom: 0 }} placeholder="Item Name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                <input className="modern-input" style={{ marginBottom: 0 }} placeholder="Description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+                <input type="number" step="0.01" className="modern-input" style={{ marginBottom: 0 }} placeholder="Price (₹)" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} required />
+                <select className="modern-input" style={{ marginBottom: 0 }} value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required>
+                  <option value="">Select Category</option>
+                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="checkbox" checked={formData.is_active} onChange={e => setFormData({ ...formData, is_active: e.target.checked })} />
+                  Active on Menu
+                </label>
+                <button type="submit" className="modern-button success" style={{ marginTop: '8px' }}>{editingItem ? 'Update Item' : 'Add Item'}</button>
+                {editingItem && (
+                  <button 
+                    type="button" 
+                    className="modern-button" 
+                    style={{ background: 'transparent', border: '1px solid var(--glass-border)' }} 
+                    onClick={() => { setEditingItem(null); setFormData({ name: '', description: '', price: '', category: '', is_active: true }); }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </form>
+            </div>
           </div>
 
           <div className="glass-panel">
-            <h3 style={{ marginBottom: '16px' }}>Current Menu</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                  <th style={{ padding: '12px' }}>Name</th>
-                  <th style={{ padding: '12px' }}>Category</th>
-                  <th style={{ padding: '12px' }}>Price</th>
-                  <th style={{ padding: '12px' }}>Status</th>
-                  <th style={{ padding: '12px' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {menu.map(item => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '12px' }}>{item.name}</td>
-                    <td style={{ padding: '12px' }}>{item.category}</td>
-                    <td style={{ padding: '12px' }}>₹{(item.price || 0).toFixed(2)}</td>
-                    <td style={{ padding: '12px' }}>
-                      <span className={`status-badge status-${item.is_active ? 'Available' : 'Awaiting'}`}>{item.is_active ? 'Active' : 'Hidden'}</span>
-                    </td>
-                    <td style={{ padding: '12px', display: 'flex', gap: '16px' }}>
-                      <button style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer' }} onClick={() => editItem(item)}>
-                        <Edit2 size={18} />
-                      </button>
-                      <button style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer' }} onClick={() => handleDeleteMenu(item.id)}>
-                        <Trash2 size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h3 style={{ margin: 0 }}>Current Menu</h3>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              {categories.map(cat => {
+                const items = menu.filter(i => i.category === cat);
+                if (items.length === 0) return null;
+                return (
+                  <div key={cat}>
+                    <h4 style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px', marginBottom: '16px', color: 'var(--accent-color)', fontSize: '18px' }}>{cat}</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {items.map(item => (
+                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{item.name}</div>
+                            <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>{item.description}</div>
+                            <div style={{ marginTop: '8px' }}>
+                               <span className={`status-badge status-${item.is_active ? 'Available' : 'Awaiting'}`} style={{ fontSize: '10px' }}>
+                                 {item.is_active ? 'Visible' : 'Hidden'}
+                               </span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            <div style={{ fontWeight: 'bold', color: 'var(--accent-color)', fontSize: '18px' }}>₹{item.price}</div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button onClick={() => { setEditingItem(item); setFormData({ ...item }); }} className="modern-button" style={{ padding: '8px' }} title="Edit"><Edit2 size={18} /></button>
+                              <button onClick={() => handleDeleteMenuItem(item.id)} className="modern-button danger" style={{ padding: '8px' }} title="Delete"><Trash2 size={18} /></button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              {menu.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                   No items in the menu yet. Add your first category and item above!
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

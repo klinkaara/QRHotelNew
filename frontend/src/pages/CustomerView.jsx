@@ -286,7 +286,7 @@ const CustomerView = () => {
         <div>
           <h3 style={{ marginBottom: '24px' }}>Menu</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            {[...['Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg'], ...new Set(menu.map(i => i.category).filter(c => !['Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg'].includes(c)))].map(cat => {
+            {[...new Set(menu.map(i => i.category))].map(cat => {
               const items = menu.filter(i => i.category === cat && i.is_active);
               if (items.length === 0) return null;
               const displayCat = cat || 'Other';
