@@ -88,48 +88,42 @@ const CustomerView = () => {
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <div className="loading" style={{ color: 'white', textAlign: 'center', marginTop: '100px' }}>Loading Menu...</div>;
 
   return (
     <div className="app-container">
-      <header style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', margin: 0 }}>Restaurant Menu</h1>
-        <p style={{ color: '#94a3b8', margin: '4px 0' }}>Table #{tableId}</p>
+      <header style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '4px' }}>Welcome!</h1>
+        <p style={{ color: '#94a3b8', fontSize: '16px' }}>Table #{tableId} • Fast & Fresh</p>
       </header>
 
       <div className="customer-layout">
-        <div>
+        <div style={{ minWidth: 0 }}>
           {/* Categories Bar */}
-          <div style={{ position: 'relative', width: '100%', marginBottom: '16px' }}>
+          <div style={{ position: 'sticky', top: '0', zIndex: '100', background: 'var(--bg-color)', paddingBottom: '16px' }}>
             <div style={{ 
               display: 'flex', 
               gap: '12px', 
               overflowX: 'auto', 
-              padding: '12px 4px 16px 4px', 
-              position: 'sticky',
-              top: '0',
-              zIndex: '100',
-              background: 'var(--bg-color)',
-              WebkitOverflowScrolling: 'touch',
-              width: '100%',
-              maxWidth: '100%'
-            }} className="category-scroll">
+              padding: '8px 4px 12px 4px', 
+              WebkitOverflowScrolling: 'touch'
+            }} className="category-scroll hide-scrollbar">
               {categories.map(cat => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: '20px',
+                    padding: '10px 20px',
+                    borderRadius: '12px',
                     border: '1px solid var(--glass-border)',
-                    background: selectedCategory === cat ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
+                    background: selectedCategory === cat ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
                     color: 'white',
                     whiteSpace: 'nowrap',
                     cursor: 'pointer',
-                    fontWeight: selectedCategory === cat ? 'bold' : 'normal',
-                    transition: 'all 0.3s ease',
-                    fontSize: '13px',
-                    boxShadow: selectedCategory === cat ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none'
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    fontSize: '14px',
+                    boxShadow: selectedCategory === cat ? '0 4px 15px rgba(16, 185, 129, 0.4)' : 'none'
                   }}
                 >
                   {cat || 'Other'}
@@ -141,14 +135,14 @@ const CustomerView = () => {
           {/* Menu Items */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {menu.filter(i => i.category === selectedCategory).map(item => (
-              <div key={item.id} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: '10px' }}>
+              <div key={item.id} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: '12px' }}>
                 <div style={{ flex: 1 }}>
-                  <h4 style={{ margin: 0, fontSize: '15px' }}>{item.name}</h4>
-                  <p style={{ margin: '2px 0 0 0', color: 'var(--success-color)', fontWeight: 'bold', fontSize: '14px' }}>₹{Number(item.price).toFixed(2)}</p>
+                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>{item.name}</h4>
+                  <p style={{ margin: '4px 0 0 0', color: 'var(--accent-color)', fontWeight: 'bold', fontSize: '15px' }}>₹{Number(item.price).toFixed(2)}</p>
                 </div>
                 <button 
-                  className="modern-button primary" 
-                  style={{ padding: '6px 16px', fontSize: '13px', height: 'fit-content' }}
+                  className="modern-button success" 
+                  style={{ width: 'auto', padding: '8px 20px', fontSize: '14px', height: 'fit-content' }}
                   onClick={() => addToCart(item)}
                 >
                   Add
@@ -158,86 +152,91 @@ const CustomerView = () => {
           </div>
         </div>
 
-        {/* Cart */}
-        <div className="glass-panel" style={{ height: 'fit-content', position: 'sticky', top: '100px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-            <ShoppingCart />
-            <h3>Your Cart</h3>
+        {/* Cart Panel */}
+        <div className="glass-panel" style={{ height: 'fit-content', position: 'sticky', top: '100px', padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+            <div style={{ background: 'var(--accent-color)', padding: '8px', borderRadius: '10px' }}>
+              <ShoppingCart size={20} color="white" />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '18px' }}>Your Selection</h3>
           </div>
-          {cart.length === 0 ? <p style={{ color: '#94a3b8' }}>Cart is empty</p> : (
+          
+          {cart.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px 0', color: '#64748b' }}>
+              <p>Your cart is empty</p>
+              <p style={{ fontSize: '12px', marginTop: '4px' }}>Add items to start ordering</p>
+            </div>
+          ) : (
             <>
-              {cart.map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: 'bold' }}>{item.name}</span>
-                    <span>₹{(item.price * item.quantity).toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '8px' }}>
-                      <button style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer' }} onClick={() => updateQuantity(idx, -1)}>
-                        <Minus size={14} />
-                      </button>
-                      <span style={{ fontSize: '14px' }}>{item.quantity}</span>
-                      <button style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer' }} onClick={() => updateQuantity(idx, 1)}>
-                        <Plus size={14} />
+              <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '20px' }}>
+                {cart.map((item, idx) => (
+                  <div key={idx} style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: '600', fontSize: '14px' }}>{item.name}</span>
+                      <span style={{ fontWeight: 'bold' }}>₹{(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '10px' }}>
+                        <button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => updateQuantity(idx, -1)}>
+                          <Minus size={16} />
+                        </button>
+                        <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: 'bold' }}>{item.quantity}</span>
+                        <button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => updateQuantity(idx, 1)}>
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                      <button style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', opacity: 0.7 }} onClick={() => removeFromCart(idx)}>
+                        <Trash2 size={18} />
                       </button>
                     </div>
-                    <button style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer' }} onClick={() => removeFromCart(idx)}>
-                      <Trash2 size={16} />
-                    </button>
                   </div>
-                </div>
-              ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', margin: '16px 0' }}>
-                <span>Total:</span>
-                <span>₹{cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
+                ))}
               </div>
-              <button className="modern-button success" onClick={handlePlaceOrderClick}>Place Order</button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 'bold', marginBottom: '24px', padding: '0 4px' }}>
+                <span>Total</span>
+                <span style={{ color: 'var(--accent-color)' }}>₹{cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
+              </div>
+              <button className="modern-button success" onClick={handlePlaceOrderClick} style={{ padding: '16px', fontSize: '16px' }}>
+                Place Order
+              </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Verification Modal */}
+      {/* Order Verification Modal */}
       {showOtpModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.85)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', position: 'relative', padding: '32px' }}>
+        <div className="modal-overlay">
+          <div className="glass-panel modal-content" style={{ position: 'relative', padding: '40px 32px' }}>
             <button 
               onClick={() => setShowOtpModal(false)}
-              style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+              style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
             >
-              <X size={20} />
+              <X size={24} />
             </button>
             
             <div style={{ textAlign: 'center' }}>
-              <div style={{ background: 'var(--success-color)', width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
-                <ShieldCheck color="white" size={28} />
+              <div style={{ background: 'var(--accent-color)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto' }}>
+                <ShieldCheck color="white" size={32} />
               </div>
-              <h3 style={{ marginBottom: '8px' }}>Finalize Your Order</h3>
-              <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>Please ask your waiter for the table code to confirm your order.</p>
+              <h2 style={{ marginBottom: '12px', fontSize: '24px' }}>Almost Done!</h2>
+              <p style={{ color: '#94a3b8', fontSize: '15px', marginBottom: '32px', lineHeight: '1.5' }}>
+                To secure your order, please enter the code provided by your waiter.
+              </p>
               
               <form onSubmit={confirmAndPlaceOrder}>
                 <input 
                   type="text" 
-                  placeholder="Enter Code" 
+                  placeholder="CODE" 
                   autoFocus
                   value={otpInput}
                   onChange={(e) => setOtpInput(e.target.value)}
                   className="modern-input"
-                  style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '4px', marginBottom: '16px' }}
+                  style={{ textAlign: 'center', fontSize: '24px', letterSpacing: '8px', marginBottom: '20px', fontWeight: 'bold' }}
                 />
-                {authError && <p style={{ color: 'var(--danger-color)', fontSize: '13px', marginBottom: '16px' }}>{authError}</p>}
-                <button type="submit" className="modern-button success" style={{ width: '100%' }}>
-                  Confirm Order
+                {authError && <p style={{ color: 'var(--danger-color)', fontSize: '14px', marginBottom: '20px', fontWeight: '500' }}>{authError}</p>}
+                <button type="submit" className="modern-button success" style={{ padding: '16px', fontSize: '16px' }}>
+                  Confirm & Place Order
                 </button>
               </form>
             </div>
