@@ -41,7 +41,7 @@ const OwnerView = () => {
   const [categories, setCategories] = useState(() => {
     const saved = localStorage.getItem('owner_menu_categories');
     return saved ? JSON.parse(saved) : [
-      'Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 
+      'Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters',
       'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg'
     ];
   });
@@ -99,6 +99,15 @@ const OwnerView = () => {
     }
   };
 
+  const fetchNotes = async () => {
+    try {
+      const res = await api.get('/api/notes');
+      setNotes(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchTables = async () => {
     try {
       const res = await api.get(`/api/sessions/tables`);
@@ -129,6 +138,15 @@ const OwnerView = () => {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+  const handleTableClick = (table) => {
+    setSelectedTable(table);
+    localStorage.setItem('owner_selected_table', JSON.stringify(table));
+    if (table.current_session_id) {
+      fetchTableOrders(table.current_session_id);
+    } else {
+      setTableOrders([]);
     }
   };
 
@@ -225,7 +243,7 @@ const OwnerView = () => {
       const res = await api.get(`/api/analytics/daily-orders?${params.toString()}`);
       const orders = res.data || [];
       setDailyOrders(orders);
-      
+
       // FALLBACK: If summary fails or hasn't loaded, calculate it from orders
       const totalRev = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
       setDashboardSummary(prev => ({
@@ -258,7 +276,7 @@ const OwnerView = () => {
 
       socket.on('checkout_requested', (data) => {
         addGroupedAlert(data.table_number, data.session_id, {
-          id: Date.now(), type: 'CHECKOUT', text: `Checkout requested. Total: $${(data.total || 0).toFixed(2)}`
+          id: Date.now(), type: 'CHECKOUT', text: `Checkout requested. Total: ₹${(data.total || 0).toFixed(2)}`
         }, { total: data.total, session_id: data.session_id });
         fetchTables();
       });
@@ -311,15 +329,7 @@ const OwnerView = () => {
     }
   }, [activeTab, filterType, customRange]);
 
-  const handleTableClick = (table) => {
-    setSelectedTable(table);
-    localStorage.setItem('owner_selected_table', JSON.stringify(table));
-    if (table.current_session_id) {
-      fetchTableOrders(table.current_session_id);
-    } else {
-      setTableOrders([]);
-    }
-  };
+
 
   const handleAddNote = async (e) => {
     e.preventDefault();
@@ -678,7 +688,7 @@ const OwnerView = () => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                               <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{item.name}</span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>${((item.price || 0) * (item.quantity || 0)).toFixed(2)}</span>
+                                <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>₹{((item.price || 0) * (item.quantity || 0)).toFixed(2)}</span>
 
                                 {(order.status === 'Confirmed' || order.status === 'Pending') && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '6px 8px', borderRadius: '8px' }}>
@@ -769,12 +779,12 @@ const OwnerView = () => {
               <h3 style={{ marginBottom: '16px' }}>Manage Categories</h3>
               <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '16px' }}>Add categories first, then assign items to them.</p>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                <input 
-                  className="modern-input" 
-                  style={{ marginBottom: 0 }} 
-                  placeholder="New Category (e.g. Drinks)" 
-                  value={newCategory} 
-                  onChange={e => setNewCategory(e.target.value)} 
+                <input
+                  className="modern-input"
+                  style={{ marginBottom: 0 }}
+                  placeholder="New Category (e.g. Drinks)"
+                  value={newCategory}
+                  onChange={e => setNewCategory(e.target.value)}
                 />
                 <button className="modern-button success" style={{ width: 'auto' }} onClick={handleAddCategory}>Add</button>
               </div>
@@ -804,10 +814,10 @@ const OwnerView = () => {
                 </label>
                 <button type="submit" className="modern-button success" style={{ marginTop: '8px' }}>{editingItem ? 'Update Item' : 'Add Item'}</button>
                 {editingItem && (
-                  <button 
-                    type="button" 
-                    className="modern-button" 
-                    style={{ background: 'transparent', border: '1px solid var(--glass-border)' }} 
+                  <button
+                    type="button"
+                    className="modern-button"
+                    style={{ background: 'transparent', border: '1px solid var(--glass-border)' }}
                     onClick={() => { setEditingItem(null); setFormData({ name: '', description: '', price: '', category: '', is_active: true }); }}
                   >
                     Cancel
@@ -821,7 +831,7 @@ const OwnerView = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h3 style={{ margin: 0 }}>Current Menu</h3>
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
               {categories.map(cat => {
                 const items = menu.filter(i => i.category === cat);
@@ -836,9 +846,9 @@ const OwnerView = () => {
                             <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{item.name}</div>
                             <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>{item.description}</div>
                             <div style={{ marginTop: '8px' }}>
-                               <span className={`status-badge status-${item.is_active ? 'Available' : 'Awaiting'}`} style={{ fontSize: '10px' }}>
-                                 {item.is_active ? 'Visible' : 'Hidden'}
-                               </span>
+                              <span className={`status-badge status-${item.is_active ? 'Available' : 'Awaiting'}`} style={{ fontSize: '10px' }}>
+                                {item.is_active ? 'Visible' : 'Hidden'}
+                              </span>
                             </div>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -856,7 +866,7 @@ const OwnerView = () => {
               })}
               {menu.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                   No items in the menu yet. Add your first category and item above!
+                  No items in the menu yet. Add your first category and item above!
                 </div>
               )}
             </div>
@@ -906,9 +916,9 @@ const OwnerView = () => {
             <div style={{ display: 'flex', gap: '24px' }}>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
                 <h3 style={{ color: '#94a3b8' }}>Total Revenue</h3>
-                <p style={{ 
-                  fontSize: '36px', 
-                  fontWeight: 'bold', 
+                <p style={{
+                  fontSize: '36px',
+                  fontWeight: 'bold',
                   color: 'var(--accent-color)',
                   filter: showRevenue ? 'none' : 'blur(8px)',
                   transition: 'filter 0.3s ease'
@@ -954,8 +964,8 @@ const OwnerView = () => {
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ 
-                            color: 'var(--accent-color)', 
+                          <div style={{
+                            color: 'var(--accent-color)',
                             fontWeight: 'bold',
                             fontSize: '18px',
                             filter: showRevenue ? 'none' : 'blur(4px)',

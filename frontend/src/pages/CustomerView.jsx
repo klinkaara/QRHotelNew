@@ -15,12 +15,8 @@ const CustomerView = () => {
   const [currentOrderId, setCurrentOrderId] = useState(null);
   const [activeTab, setActiveTab] = useState('menu');
   const [selectedCategory, setSelectedCategory] = useState('');
-  useEffect(() => {
-    if (menu.length > 0 && !selectedCategory) {
-      const firstCat = menu[0].category;
-      setSelectedCategory(firstCat);
-    }
-  }, [menu]);
+  const [otpInput, setOtpInput] = useState('');
+  const [sessionOtp, setSessionOtp] = useState(() => sessionStorage.getItem('customer_session_otp') || '');
   const [otpError, setOtpError] = useState('');
   const [liveOrders, setLiveOrders] = useState([]);
 
@@ -90,7 +86,12 @@ const CustomerView = () => {
       .catch(console.error);
       
     api.get(`/api/menu/`)
-      .then(res => setMenu(res.data))
+      .then(res => {
+        setMenu(res.data);
+        if (res.data.length > 0 && !selectedCategory) {
+          setSelectedCategory(res.data[0].category);
+        }
+      })
       .catch(console.error);
     return () => {
       if (socket) {
@@ -166,7 +167,7 @@ const CustomerView = () => {
       clearCart();
       setOtpError('');
       // Fetch orders immediately
-      const res = await axios.get(`${API_BASE_URL}/api/sessions/${session.id}/orders`);
+      const res = await api.get(`/api/sessions/${session.id}/orders`);
       setLiveOrders(res.data);
     } catch (err) {
       setOtpError('Invalid OTP. Please ask your waiter.');
