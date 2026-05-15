@@ -149,22 +149,12 @@ const OwnerView = () => {
 
       if (res.data) {
         setDashboardSummary(res.data);
-        const histData = [
-          { label: 'Selected Day', revenue: res.data.today_revenue || 0 },
-          { label: 'Month Total', revenue: res.data.month_revenue || 0 }
-        ];
-        setHistoricalData(histData);
       }
     } catch (err) {
       console.error("Analytics fetch failed:", err);
-      // Ensure we don't stay in a loading state forever
       if (!dashboardSummary) {
         setDashboardSummary({ today_revenue: 0, today_orders: 0, active_tables: 0 });
       }
-      setHistoricalData([
-        { label: 'Selected Day', revenue: 0 },
-        { label: 'Month Total', revenue: 0 }
-      ]);
     }
   };
 
@@ -767,10 +757,10 @@ const OwnerView = () => {
           {dashboardSummary ? (
             <div style={{ display: 'flex', gap: '24px' }}>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
-                <h3 style={{ color: '#94a3b8' }}>Today's Revenue</h3>
-                <p style={{
-                  fontSize: '36px',
-                  fontWeight: 'bold',
+                <h3 style={{ color: '#94a3b8' }}>Revenue ({selectedDate})</h3>
+                <p style={{ 
+                  fontSize: '36px', 
+                  fontWeight: 'bold', 
                   color: 'var(--accent-color)',
                   filter: showRevenue ? 'none' : 'blur(8px)',
                   transition: 'filter 0.3s ease'
@@ -779,7 +769,7 @@ const OwnerView = () => {
                 </p>
               </div>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
-                <h3 style={{ color: '#94a3b8' }}>Today's Orders</h3>
+                <h3 style={{ color: '#94a3b8' }}>Orders</h3>
                 <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{dashboardSummary.today_orders}</p>
               </div>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
@@ -789,49 +779,11 @@ const OwnerView = () => {
             </div>
           ) : <p>Loading summary...</p>}
 
-          <div className="responsive-grid">
-            <div className="glass-panel" style={{ flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <h3 style={{ margin: 0 }}>Revenue Comparison</h3>
-                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Day vs Month</span>
-              </div>
-              {historicalData.length > 0 ? (
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '32px', height: '300px', padding: '20px 40px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
-                  {historicalData.map(data => {
-                    const maxRevenue = Math.max(...historicalData.map(d => d.revenue));
-                    const heightPercentage = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
-                    return (
-                      <div key={data.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                        <span style={{ 
-                          fontSize: '14px', 
-                          marginBottom: '12px', 
-                          color: 'white', 
-                          fontWeight: 'bold',
-                          filter: showRevenue ? 'none' : 'blur(6px)',
-                          transition: 'filter 0.3s ease'
-                        }}>
-                          {showRevenue ? `$${(data.revenue || 0).toFixed(2)}` : '$****.**'}
-                        </span>
-                        <div style={{ 
-                          width: '100%', 
-                          maxWidth: '80px', 
-                          height: `${heightPercentage}%`, 
-                          background: data.label === 'Selected Day' ? 'var(--accent-color)' : 'var(--primary-color)', 
-                          borderRadius: '12px 12px 0 0', 
-                          transition: 'height 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-                        }}></div>
-                        <span style={{ marginTop: '16px', fontSize: '14px', color: '#94a3b8', fontWeight: 'medium' }}>{data.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : <p>Loading data...</p>}
-            </div>
-
-            <div className="glass-panel">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <h3 style={{ margin: 0 }}>Orders by Date</h3>
+          <div className="glass-panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h3 style={{ margin: 0 }}>Order History</h3>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <span style={{ fontSize: '14px', color: '#94a3b8' }}>Select Date:</span>
                 <input
                   type="date"
                   className="modern-input"
@@ -840,33 +792,39 @@ const OwnerView = () => {
                   onChange={(e) => setSelectedDate(e.target.value)}
                 />
               </div>
-              <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
-                {dailyOrders.length === 0 ? <p style={{ color: '#94a3b8' }}>No data for this date.</p> : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {dailyOrders.map(session => (
-                      <div key={session.id} style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', fontSize: '14px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <strong>Table {session.table_number}</strong>
-                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{new Date(session.created_at).toLocaleTimeString()}</div>
+            </div>
+            
+            <div style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '8px' }}>
+              {dailyOrders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  No orders found for this date.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {dailyOrders.map(session => (
+                    <div key={session.id} style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong>Table {session.table_number}</strong>
+                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>{new Date(session.created_at).toLocaleTimeString()}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ 
+                            color: 'var(--accent-color)', 
+                            fontWeight: 'bold',
+                            fontSize: '18px',
+                            filter: showRevenue ? 'none' : 'blur(4px)',
+                            transition: 'filter 0.3s ease'
+                          }}>
+                            {showRevenue ? `$${(session.total_amount || 0).toFixed(2)}` : '$**.**'}
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{
-                              color: 'var(--accent-color)',
-                              fontWeight: 'bold',
-                              filter: showRevenue ? 'none' : 'blur(4px)',
-                              transition: 'filter 0.3s ease'
-                            }}>
-                              {showRevenue ? `$${(session.total_amount || 0).toFixed(2)}` : '$**.**'}
-                            </div>
-                            <div style={{ fontSize: '10px', opacity: 0.7 }}>{session.status}</div>
-                          </div>
+                          <div style={{ fontSize: '12px', opacity: 0.7 }}>{session.status}</div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
