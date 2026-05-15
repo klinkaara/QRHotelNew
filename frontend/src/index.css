@@ -226,3 +226,22 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Show a thin, modern scrollbar only on desktop for the category bar */
+@media (min-width: 901px) {
+  .category-scroll::-webkit-scrollbar {
+    height: 4px;
+    display: block;
+  }
+  .category-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .category-scroll::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 10px;
+  }
+  .category-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) rgba(255, 255, 255, 0.05);
+  }
+}

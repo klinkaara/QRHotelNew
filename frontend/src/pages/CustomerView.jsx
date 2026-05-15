@@ -291,22 +291,20 @@ const CustomerView = () => {
 
       <div className="customer-layout">
         <div>
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
-            overflowX: 'auto', 
-            padding: '12px 4px', 
-            marginBottom: '16px',
-            position: 'sticky',
-            top: '0',
-            zIndex: '100',
-            background: 'var(--bg-color)',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch',
-            width: '100%',
-            maxWidth: '100%'
-          }} className="hide-scrollbar">
+          <div style={{ position: 'relative', width: '100%', marginBottom: '16px' }}>
+            <div style={{ 
+              display: 'flex', 
+              gap: '12px', 
+              overflowX: 'auto', 
+              padding: '12px 4px 16px 4px', 
+              position: 'sticky',
+              top: '0',
+              zIndex: '100',
+              background: 'var(--bg-color)',
+              WebkitOverflowScrolling: 'touch',
+              width: '100%',
+              maxWidth: '100%'
+            }} className="category-scroll">
             {[...new Set(menu.map(i => i.category))].map(cat => (
               <button
                 key={cat}
@@ -329,6 +327,7 @@ const CustomerView = () => {
               </button>
             ))}
           </div>
+        </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[...new Set(menu.map(i => i.category))].filter(cat => selectedCategory === cat).map(cat => {
@@ -338,15 +337,14 @@ const CustomerView = () => {
                 <div key={cat}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {items.map(item => (
-                      <div key={item.id} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', borderRadius: '12px' }}>
+                      <div key={item.id} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: '10px' }}>
                         <div style={{ flex: 1 }}>
-                          <h4 style={{ fontSize: '16px', marginBottom: '4px' }}>{item.name}</h4>
-                          <p style={{ color: '#94a3b8', fontSize: '13px', margin: '2px 0' }}>{item.description}</p>
-                          <p style={{ fontWeight: 'bold', color: 'var(--accent-color)', fontSize: '15px', marginTop: '6px' }}>₹{item.price.toFixed(2)}</p>
+                          <h4 style={{ margin: 0, fontSize: '15px' }}>{item.name}</h4>
+                          <p style={{ margin: '2px 0 0 0', color: 'var(--success-color)', fontWeight: 'bold', fontSize: '14px' }}>₹{Number(item.price).toFixed(2)}</p>
                         </div>
                         <button 
-                          className="modern-button" 
-                          style={{ width: 'auto', padding: '6px 16px', fontSize: '13px', marginLeft: '12px' }} 
+                          className="modern-button primary" 
+                          style={{ padding: '6px 16px', fontSize: '13px', height: 'fit-content' }}
                           onClick={() => addToCart(item)}
                         >
                           Add
