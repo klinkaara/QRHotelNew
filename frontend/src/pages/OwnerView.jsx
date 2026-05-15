@@ -139,19 +139,32 @@ const OwnerView = () => {
 
   const fetchAnalytics = async (date) => {
     try {
-      // Use the main summary endpoint which is most reliable
-      const res = await api.get(`/api/analytics/summary?date=${date}`);
-      setDashboardSummary(res.data);
-      
-      // Simplify historical data to just Daily vs Monthly comparison
-      const histData = [
-        { label: 'Selected Day', revenue: res.data.today_revenue || 0 },
-        { label: 'Month Total', revenue: res.data.month_revenue || 0 }
-      ];
-      setHistoricalData(histData);
+      // Try 'summary' first, then 'dashboard' as a fallback
+      let res;
+      try {
+        res = await api.get(`/api/analytics/summary?date=${date}`);
+      } catch (e) {
+        res = await api.get(`/api/analytics/dashboard?date=${date}`);
+      }
+
+      if (res.data) {
+        setDashboardSummary(res.data);
+        const histData = [
+          { label: 'Selected Day', revenue: res.data.today_revenue || 0 },
+          { label: 'Month Total', revenue: res.data.month_revenue || 0 }
+        ];
+        setHistoricalData(histData);
+      }
     } catch (err) {
-      console.error(err);
-      setHistoricalData([]);
+      console.error("Analytics fetch failed:", err);
+      // Ensure we don't stay in a loading state forever
+      if (!dashboardSummary) {
+        setDashboardSummary({ today_revenue: 0, today_orders: 0, active_tables: 0 });
+      }
+      setHistoricalData([
+        { label: 'Selected Day', revenue: 0 },
+        { label: 'Month Total', revenue: 0 }
+      ]);
     }
   };
 
