@@ -303,7 +303,9 @@ const CustomerView = () => {
             background: 'var(--bg-color)',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch'
+            WebkitOverflowScrolling: 'touch',
+            width: '100%',
+            maxWidth: '100%'
           }} className="hide-scrollbar">
             {[...new Set(menu.map(i => i.category))].map(cat => (
               <button
@@ -358,7 +360,7 @@ const CustomerView = () => {
           </div>
         </div>
 
-        <div className="glass-panel" style={{ height: 'fit-content' }}>
+        <div className="glass-panel" style={{ height: 'fit-content', position: 'sticky', top: '100px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
             <ShoppingCart />
             <h3>Your Cart</h3>
