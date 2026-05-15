@@ -13,7 +13,8 @@ const CustomerView = () => {
   const [tableStatus, setTableStatus] = useState('Available');
   const [orderState, setOrderState] = useState(() => sessionStorage.getItem('customer_order_state') || 'MENU'); // MENU, OTP, TRACKING, THANKS
   const [currentOrderId, setCurrentOrderId] = useState(null);
-  const [otpInput, setOtpInput] = useState('');
+  const [activeTab, setActiveTab] = useState('menu');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [sessionOtp, setSessionOtp] = useState(() => sessionStorage.getItem('customer_session_otp') || '');
   const [otpError, setOtpError] = useState('');
   const [liveOrders, setLiveOrders] = useState([]);
@@ -284,24 +285,56 @@ const CustomerView = () => {
 
       <div className="customer-layout">
         <div>
-          <h3 style={{ marginBottom: '24px' }}>Menu</h3>
+          <div style={{ 
+            display: 'flex', 
+            gap: '12px', 
+            overflowX: 'auto', 
+            padding: '4px 4px 16px 4px', 
+            marginBottom: '24px',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch'
+          }} className="hide-scrollbar">
+            {['All', ...new Set(menu.map(i => i.category))].map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '30px',
+                  border: '1px solid var(--glass-border)',
+                  background: selectedCategory === cat ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
+                  color: 'white',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  fontWeight: selectedCategory === cat ? 'bold' : 'normal',
+                  transition: 'all 0.3s ease',
+                  fontSize: '14px',
+                  boxShadow: selectedCategory === cat ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none'
+                }}
+              >
+                {cat === 'All' ? 'All Menus' : cat}
+              </button>
+            ))}
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            {[...new Set(menu.map(i => i.category))].map(cat => {
+            {[...new Set(menu.map(i => i.category))].filter(cat => selectedCategory === 'All' || selectedCategory === cat).map(cat => {
               const items = menu.filter(i => i.category === cat && i.is_active);
               if (items.length === 0) return null;
               const displayCat = cat || 'Other';
               return (
                 <div key={displayCat}>
                   <h4 style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px', marginBottom: '20px', color: 'var(--accent-color)', fontSize: '20px' }}>{displayCat}</h4>
-                  <div className="grid-cards">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {items.map(item => (
-                      <div key={item.id} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', padding: '16px' }}>
-                        <div style={{ flexGrow: 1 }}>
+                      <div key={item.id} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px' }}>
+                        <div style={{ flex: 1 }}>
                           <h4 style={{ fontSize: '18px' }}>{item.name}</h4>
-                          <p style={{ color: '#94a3b8', fontSize: '14px', margin: '8px 0' }}>{item.description}</p>
+                          <p style={{ color: '#94a3b8', fontSize: '14px', margin: '4px 0' }}>{item.description}</p>
                           <p style={{ fontWeight: 'bold', color: 'var(--accent-color)', fontSize: '16px' }}>₹{item.price.toFixed(2)}</p>
                         </div>
-                        <button className="modern-button" style={{ marginTop: '16px' }} onClick={() => addToCart(item)}>Add to Cart</button>
+                        <button className="modern-button" style={{ width: 'auto', marginLeft: '16px' }} onClick={() => addToCart(item)}>Add</button>
                       </div>
                     ))}
                   </div>
