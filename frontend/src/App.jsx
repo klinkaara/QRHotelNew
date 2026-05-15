@@ -1,5 +1,6 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { SocketProvider } from './context/SocketContext'
 import { CartProvider } from './context/CartContext'
@@ -52,6 +53,7 @@ function App() {
 
               <Route path="/" element={<Navigate to="/login" replace />} />
             </Routes>
+            <SpeedInsights />
           </Router>
         </CartProvider>
       </SocketProvider>
