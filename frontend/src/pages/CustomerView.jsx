@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, ShieldCheck, X } from 'lucide-react';
 
 const CustomerView = () => {
   const { tableId } = useParams();
@@ -10,6 +10,11 @@ const CustomerView = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Order Verification State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     fetchMenu();
@@ -55,19 +60,31 @@ const CustomerView = () => {
     setCart(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const placeOrder = async () => {
+  const handlePlaceOrderClick = () => {
     if (cart.length === 0) return;
-    try {
-      await api.post('/api/orders', {
-        table_id: tableId,
-        items: cart.map(i => ({ menu_item_id: i.id, quantity: i.quantity })),
-        customer_name: 'Guest'
-      });
-      alert('Order placed successfully!');
-      setCart([]);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to place order');
+    setShowOtpModal(true);
+  };
+
+  const confirmAndPlaceOrder = async (e) => {
+    e.preventDefault();
+    if (otpInput === '1234') {
+      try {
+        await api.post('/api/orders', {
+          table_id: tableId,
+          items: cart.map(i => ({ menu_item_id: i.id, quantity: i.quantity })),
+          customer_name: 'Guest'
+        });
+        alert('Order placed successfully! The kitchen is preparing your food.');
+        setCart([]);
+        setShowOtpModal(false);
+        setOtpInput('');
+        setAuthError('');
+      } catch (err) {
+        console.error(err);
+        alert('Failed to place order');
+      }
+    } else {
+      setAuthError('Invalid code. Please ask your waiter for the correct code.');
     }
   };
 
@@ -76,7 +93,7 @@ const CustomerView = () => {
   return (
     <div className="app-container">
       <header style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', margin: 0 }}>Welcome to our Restaurant</h1>
+        <h1 style={{ fontSize: '24px', margin: 0 }}>Restaurant Menu</h1>
         <p style={{ color: '#94a3b8', margin: '4px 0' }}>Table #{tableId}</p>
       </header>
 
@@ -175,11 +192,58 @@ const CustomerView = () => {
                 <span>Total:</span>
                 <span>₹{cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
               </div>
-              <button className="modern-button success" onClick={placeOrder}>Place Order</button>
+              <button className="modern-button success" onClick={handlePlaceOrderClick}>Place Order</button>
             </>
           )}
         </div>
       </div>
+
+      {/* Verification Modal */}
+      {showOtpModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', position: 'relative', padding: '32px' }}>
+            <button 
+              onClick={() => setShowOtpModal(false)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+            >
+              <X size={20} />
+            </button>
+            
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ background: 'var(--success-color)', width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
+                <ShieldCheck color="white" size={28} />
+              </div>
+              <h3 style={{ marginBottom: '8px' }}>Finalize Your Order</h3>
+              <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>Please ask your waiter for the table code to confirm your order.</p>
+              
+              <form onSubmit={confirmAndPlaceOrder}>
+                <input 
+                  type="text" 
+                  placeholder="Enter Code" 
+                  autoFocus
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value)}
+                  className="modern-input"
+                  style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '4px', marginBottom: '16px' }}
+                />
+                {authError && <p style={{ color: 'var(--danger-color)', fontSize: '13px', marginBottom: '16px' }}>{authError}</p>}
+                <button type="submit" className="modern-button success" style={{ width: '100%' }}>
+                  Confirm Order
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
