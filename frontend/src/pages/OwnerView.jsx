@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
-import { Edit2, Plus, Trash2, Bell, Check, Receipt, ArrowLeft, Minus, LogOut } from 'lucide-react';
+import { Edit2, Plus, Trash2, Bell, Check, Receipt, ArrowLeft, Minus, LogOut, Eye, EyeOff } from 'lucide-react';
 import api, { API_BASE_URL } from '../api';
 
 const OwnerView = () => {
@@ -14,6 +14,7 @@ const OwnerView = () => {
     const validTabs = ['dashboard', 'menu', 'analytics', 'notes'];
     return (saved && validTabs.includes(saved)) ? saved : 'dashboard';
   }); // dashboard, menu, analytics, notes
+  const [showRevenue, setShowRevenue] = useState(false);
 
   // Waiter-like State
   const [groupedAlerts, setGroupedAlerts] = useState({});
@@ -136,12 +137,15 @@ const OwnerView = () => {
     }
   };
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = async (date) => {
     try {
-      const summaryRes = await api.get('/api/analytics/dashboard');
-      setDashboardSummary(summaryRes.data);
-      const historicalRes = await api.get('/api/analytics/historical');
-      setHistoricalData(historicalRes.data);
+      // Fetch summary for the specific date
+      const res = await api.get(`/api/analytics/summary?date=${date}`);
+      setDashboardSummary(res.data);
+
+      // Fetch historical data (per day if date provided)
+      const histRes = await api.get(`/api/analytics/historical-revenue?date=${date}`);
+      setHistoricalData(histRes.data);
     } catch (err) {
       console.error(err);
     }
@@ -218,7 +222,7 @@ const OwnerView = () => {
   useEffect(() => {
     localStorage.setItem('owner_active_tab', activeTab);
     if (activeTab === 'analytics') {
-      fetchAnalytics();
+      fetchAnalytics(selectedDate);
       fetchDailyOrders(selectedDate);
     } else if (activeTab === 'notes') {
       fetchNotes();
@@ -432,6 +436,17 @@ const OwnerView = () => {
           <button className={`modern-button ${activeTab === 'menu' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('menu')}>Menu</button>
           <button className={`modern-button ${activeTab === 'analytics' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('analytics')}>Analytics & History</button>
           <button className={`modern-button ${activeTab === 'notes' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('notes')}>Notes</button>
+
+          <button
+            className="modern-button"
+            style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: showRevenue ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)' }}
+            onClick={() => setShowRevenue(!showRevenue)}
+            title="Toggle Revenue Visibility"
+          >
+            {showRevenue ? <Eye size={18} /> : <EyeOff size={18} />}
+            <span style={{ fontSize: '14px' }}>{showRevenue ? 'Hide' : 'Show'} Revenue</span>
+          </button>
+
           <button onClick={logout} className="modern-button danger" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <LogOut size={18} />
             Logout
@@ -634,8 +649,14 @@ const OwnerView = () => {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
-                          <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
-                            Total: ${(order.total_amount || 0).toFixed(2)}
+                          <div style={{
+                            fontSize: '18px',
+                            fontWeight: 'bold',
+                            color: 'white',
+                            filter: showRevenue ? 'none' : 'blur(4px)',
+                            transition: 'filter 0.3s ease'
+                          }}>
+                            Total: {showRevenue ? `$${(order.total_amount || 0).toFixed(2)}` : '$**.**'}
                           </div>
                           {order.status === 'Confirmed' && (
                             <button
@@ -664,8 +685,13 @@ const OwnerView = () => {
                     <button className="modern-button danger" style={{ width: 'auto', padding: '12px 24px' }} onClick={() => handleForceCloseTable(selectedTable.table_number, selectedTable.current_session_id)}>
                       Close Table
                     </button>
-                    <span style={{ fontSize: '28px', fontWeight: 'bold' }}>
-                      Total Bill: ${tableOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toFixed(2)}
+                    <span style={{
+                      fontSize: '28px',
+                      fontWeight: 'bold',
+                      filter: showRevenue ? 'none' : 'blur(10px)',
+                      transition: 'filter 0.3s ease'
+                    }}>
+                      Total Bill: {showRevenue ? `$${tableOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toFixed(2)}` : '$****.**'}
                     </span>
                   </div>
                 </div>
@@ -736,7 +762,15 @@ const OwnerView = () => {
             <div style={{ display: 'flex', gap: '24px' }}>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
                 <h3 style={{ color: '#94a3b8' }}>Today's Revenue</h3>
-                <p style={{ fontSize: '36px', fontWeight: 'bold', color: 'var(--accent-color)' }}>${(dashboardSummary.today_revenue || 0).toFixed(2)}</p>
+                <p style={{
+                  fontSize: '36px',
+                  fontWeight: 'bold',
+                  color: 'var(--accent-color)',
+                  filter: showRevenue ? 'none' : 'blur(8px)',
+                  transition: 'filter 0.3s ease'
+                }}>
+                  {showRevenue ? `$${(dashboardSummary.today_revenue || 0).toFixed(2)}` : '$****.**'}
+                </p>
               </div>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
                 <h3 style={{ color: '#94a3b8' }}>Today's Orders</h3>
@@ -750,23 +784,35 @@ const OwnerView = () => {
           ) : <p>Loading summary...</p>}
 
           <div className="responsive-grid">
-            <div className="glass-panel">
-              <h3 style={{ marginBottom: '24px' }}>Historical Revenue</h3>
+            <div className="glass-panel" style={{ flex: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h3 style={{ margin: 0 }}>Revenue Breakdown</h3>
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Showing trends for selected period</span>
+              </div>
               {historicalData.length > 0 ? (
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '300px', padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '300px', padding: '20px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflowX: 'auto' }}>
                   {historicalData.map(data => {
                     const maxRevenue = Math.max(...historicalData.map(d => d.revenue));
                     const heightPercentage = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
                     return (
-                      <div key={data.sort_key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                        <span style={{ fontSize: '10px', marginBottom: '8px', color: 'white', fontWeight: 'bold' }}>${(data.revenue || 0).toFixed(0)}</span>
-                        <div style={{ width: '100%', maxWidth: '40px', height: `${heightPercentage}%`, background: 'var(--primary-color)', borderRadius: '8px 8px 0 0', transition: 'height 0.5s ease-out' }}></div>
-                        <span style={{ marginTop: '12px', fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{data.label}</span>
+                      <div key={data.sort_key || data.label} style={{ flex: 1, minWidth: historicalData.length > 15 ? '30px' : 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                        <span style={{
+                          fontSize: '9px',
+                          marginBottom: '8px',
+                          color: 'white',
+                          fontWeight: 'bold',
+                          filter: showRevenue ? 'none' : 'blur(4px)',
+                          transition: 'filter 0.3s ease'
+                        }}>
+                          {showRevenue ? `$${(data.revenue || 0).toFixed(0)}` : '$***'}
+                        </span>
+                        <div style={{ width: '100%', maxWidth: '30px', height: `${heightPercentage}%`, background: 'var(--primary-color)', borderRadius: '4px 4px 0 0', transition: 'height 0.5s ease-out', opacity: data.revenue > 0 ? 1 : 0.2 }}></div>
+                        <span style={{ marginTop: '12px', fontSize: '9px', color: '#94a3b8', whiteSpace: 'nowrap', transform: historicalData.length > 10 ? 'rotate(-45deg)' : 'none' }}>{data.label}</span>
                       </div>
                     );
                   })}
                 </div>
-              ) : <p>No historical data available.</p>}
+              ) : <p>No historical data available for this period.</p>}
             </div>
 
             <div className="glass-panel">
@@ -791,7 +837,14 @@ const OwnerView = () => {
                             <div style={{ fontSize: '12px', color: '#94a3b8' }}>{new Date(session.created_at).toLocaleTimeString()}</div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>${(session.total_amount || 0).toFixed(2)}</div>
+                            <div style={{
+                              color: 'var(--accent-color)',
+                              fontWeight: 'bold',
+                              filter: showRevenue ? 'none' : 'blur(4px)',
+                              transition: 'filter 0.3s ease'
+                            }}>
+                              {showRevenue ? `$${(session.total_amount || 0).toFixed(2)}` : '$**.**'}
+                            </div>
                             <div style={{ fontSize: '10px', opacity: 0.7 }}>{session.status}</div>
                           </div>
                         </div>
