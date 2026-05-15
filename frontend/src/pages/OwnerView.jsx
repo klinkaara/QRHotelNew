@@ -204,7 +204,19 @@ const OwnerView = () => {
       }
 
       const res = await api.get(`/api/analytics/daily-orders?${params.toString()}`);
-      setDailyOrders(res.data);
+      const orders = res.data || [];
+      setDailyOrders(orders);
+      
+      // FALLBACK: If summary fails or hasn't loaded, calculate it from orders
+      const totalRev = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+      setDashboardSummary(prev => ({
+        ...prev,
+        today_revenue: totalRev,
+        total_revenue: totalRev,
+        today_orders: orders.length,
+        total_orders: orders.length,
+        active_tables: prev?.active_tables || 0
+      }));
     } catch (err) {
       console.error("Orders fetch failed:", err);
       setDailyOrders([]);
