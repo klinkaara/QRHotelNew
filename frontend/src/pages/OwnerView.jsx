@@ -40,7 +40,7 @@ const OwnerView = () => {
   const [formData, setFormData] = useState({ name: '', description: '', price: '', category: 'Veg Starters', is_active: true });
   const categories = [
     'Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 
-    'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg'
+    'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg', 'Other'
   ];
 
   // Analytics State
@@ -466,7 +466,7 @@ const OwnerView = () => {
       }
       fetchMenu();
       setEditingItem(null);
-      setFormData({ name: '', description: '', price: '', category: '', is_active: true });
+      setFormData({ name: '', description: '', price: '', category: 'Veg Starters', is_active: true });
     } catch (err) {
       alert('Error saving menu item');
     }

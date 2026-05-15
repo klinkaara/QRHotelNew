@@ -286,12 +286,13 @@ const CustomerView = () => {
         <div>
           <h3 style={{ marginBottom: '24px' }}>Menu</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            {['Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg'].map(cat => {
+            {[...['Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg'], ...new Set(menu.map(i => i.category).filter(c => !['Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg'].includes(c)))].map(cat => {
               const items = menu.filter(i => i.category === cat && i.is_active);
               if (items.length === 0) return null;
+              const displayCat = cat || 'Other';
               return (
-                <div key={cat}>
-                  <h4 style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px', marginBottom: '20px', color: 'var(--accent-color)', fontSize: '20px' }}>{cat}</h4>
+                <div key={displayCat}>
+                  <h4 style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px', marginBottom: '20px', color: 'var(--accent-color)', fontSize: '20px' }}>{displayCat}</h4>
                   <div className="grid-cards">
                     {items.map(item => (
                       <div key={item.id} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', padding: '16px' }}>
