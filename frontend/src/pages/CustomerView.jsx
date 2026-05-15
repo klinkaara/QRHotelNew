@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
-import { ShoppingCart, Plus, Minus, Trash2, ShieldCheck, X } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, User, Phone, LogIn } from 'lucide-react';
 
 const CustomerView = () => {
   const { tableId } = useParams();
@@ -11,14 +11,21 @@ const CustomerView = () => {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Order Verification State
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otpInput, setOtpInput] = useState('');
+  // Auth State
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem(`table_${tableId}_logged_in`) === 'true';
+  });
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [authError, setAuthError] = useState('');
 
   useEffect(() => {
-    fetchMenu();
-  }, []);
+    if (isLoggedIn) {
+      fetchMenu();
+    } else {
+      setLoading(false);
+    }
+  }, [isLoggedIn]);
 
   const fetchMenu = async () => {
     try {
@@ -33,6 +40,23 @@ const CustomerView = () => {
       console.error(err);
       setLoading(false);
     }
+  };
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (!customerName.trim() || !customerPhone.trim()) {
+      setAuthError('Please enter both name and phone number.');
+      return;
+    }
+    if (customerPhone.length < 10) {
+      setAuthError('Please enter a valid 10-digit phone number.');
+      return;
+    }
+    
+    setIsLoggedIn(true);
+    localStorage.setItem(`table_${tableId}_logged_in`, 'true');
+    localStorage.setItem(`table_${tableId}_customer_name`, customerName);
+    localStorage.setItem(`table_${tableId}_customer_phone`, customerPhone);
   };
 
   const addToCart = (item) => {
@@ -60,41 +84,95 @@ const CustomerView = () => {
     setCart(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const handlePlaceOrderClick = () => {
+  const placeOrder = async () => {
     if (cart.length === 0) return;
-    setShowOtpModal(true);
-  };
-
-  const confirmAndPlaceOrder = async (e) => {
-    e.preventDefault();
-    if (otpInput === '1234') {
-      try {
-        await api.post('/api/orders', {
-          table_id: tableId,
-          items: cart.map(i => ({ menu_item_id: i.id, quantity: i.quantity })),
-          customer_name: 'Guest'
-        });
-        alert('Order placed successfully! The kitchen is preparing your food.');
-        setCart([]);
-        setShowOtpModal(false);
-        setOtpInput('');
-        setAuthError('');
-      } catch (err) {
-        console.error(err);
-        alert('Failed to place order');
-      }
-    } else {
-      setAuthError('Invalid code. Please ask your waiter for the correct code.');
+    const name = localStorage.getItem(`table_${tableId}_customer_name`) || 'Guest';
+    try {
+      await api.post('/api/orders', {
+        table_id: tableId,
+        items: cart.map(i => ({ menu_item_id: i.id, quantity: i.quantity })),
+        customer_name: name
+      });
+      alert('Order placed successfully! The kitchen is preparing your food.');
+      setCart([]);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to place order');
     }
   };
 
-  if (loading) return <div className="loading" style={{ color: 'white', textAlign: 'center', marginTop: '100px' }}>Loading Menu...</div>;
+  if (loading) return <div className="loading" style={{ color: 'white', textAlign: 'center', marginTop: '100px' }}>Loading...</div>;
+
+  // If not logged in, show login screen
+  if (!isLoggedIn) {
+    return (
+      <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '90vh' }}>
+        <div className="glass-panel animate-slide-up" style={{ width: '100%', maxWidth: '400px', textAlign: 'center', padding: '48px 32px' }}>
+          <div style={{ background: 'var(--accent-color)', width: '72px', height: '72px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto', boxShadow: '0 8px 24px rgba(16, 185, 129, 0.3)' }}>
+            <LogIn color="white" size={32} />
+          </div>
+          <h2 style={{ marginBottom: '12px', fontSize: '24px', fontWeight: '800' }}>Welcome!</h2>
+          <p style={{ color: '#94a3b8', marginBottom: '40px', fontSize: '15px' }}>Please enter your details to view the menu for Table #{tableId}</p>
+          
+          <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8', fontSize: '13px', marginBottom: '8px', marginLeft: '4px' }}>
+                <User size={14} /> Full Name
+              </label>
+              <input 
+                type="text" 
+                placeholder="Enter your name" 
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="modern-input"
+                style={{ marginBottom: 0 }}
+                required
+              />
+            </div>
+            
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8', fontSize: '13px', marginBottom: '8px', marginLeft: '4px' }}>
+                <Phone size={14} /> Phone Number
+              </label>
+              <input 
+                type="tel" 
+                placeholder="Enter your phone number" 
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className="modern-input"
+                style={{ marginBottom: 0 }}
+                required
+              />
+            </div>
+
+            {authError && <p style={{ color: 'var(--danger-color)', fontSize: '14px', marginBottom: '20px', textAlign: 'center', fontWeight: '500' }}>{authError}</p>}
+            
+            <button type="submit" className="modern-button success" style={{ padding: '16px', fontSize: '16px' }}>
+              Enter Restaurant
+            </button>
+          </form>
+          <p style={{ marginTop: '32px', fontSize: '12px', color: '#64748b' }}>By entering, you agree to our terms of service.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
-      <header style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '4px' }}>Welcome!</h1>
-        <p style={{ color: '#94a3b8', fontSize: '16px' }}>Table #{tableId} • Fast & Fresh</p>
+      <header style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: '800', margin: 0 }}>Menu</h1>
+          <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '4px' }}>Table #{tableId} • Hello, {localStorage.getItem(`table_${tableId}_customer_name`)}</p>
+        </div>
+        <button 
+          onClick={() => {
+            localStorage.removeItem(`table_${tableId}_logged_in`);
+            setIsLoggedIn(false);
+          }}
+          style={{ background: 'none', border: '1px solid var(--glass-border)', color: '#94a3b8', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', fontWeight: '600' }}
+        >
+          Exit
+        </button>
       </header>
 
       <div className="customer-layout">
@@ -196,53 +274,13 @@ const CustomerView = () => {
                 <span>Total</span>
                 <span style={{ color: 'var(--accent-color)' }}>₹{cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
               </div>
-              <button className="modern-button success" onClick={handlePlaceOrderClick} style={{ padding: '16px', fontSize: '16px' }}>
+              <button className="modern-button success" onClick={placeOrder} style={{ padding: '16px', fontSize: '16px' }}>
                 Place Order
               </button>
             </>
           )}
         </div>
       </div>
-
-      {/* Order Verification Modal */}
-      {showOtpModal && (
-        <div className="modal-overlay">
-          <div className="glass-panel modal-content" style={{ position: 'relative', padding: '40px 32px' }}>
-            <button 
-              onClick={() => setShowOtpModal(false)}
-              style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-            >
-              <X size={24} />
-            </button>
-            
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ background: 'var(--accent-color)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto' }}>
-                <ShieldCheck color="white" size={32} />
-              </div>
-              <h2 style={{ marginBottom: '12px', fontSize: '24px' }}>Almost Done!</h2>
-              <p style={{ color: '#94a3b8', fontSize: '15px', marginBottom: '32px', lineHeight: '1.5' }}>
-                To secure your order, please enter the code provided by your waiter.
-              </p>
-              
-              <form onSubmit={confirmAndPlaceOrder}>
-                <input 
-                  type="text" 
-                  placeholder="CODE" 
-                  autoFocus
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value)}
-                  className="modern-input"
-                  style={{ textAlign: 'center', fontSize: '24px', letterSpacing: '8px', marginBottom: '20px', fontWeight: 'bold' }}
-                />
-                {authError && <p style={{ color: 'var(--danger-color)', fontSize: '14px', marginBottom: '20px', fontWeight: '500' }}>{authError}</p>}
-                <button type="submit" className="modern-button success" style={{ padding: '16px', fontSize: '16px' }}>
-                  Confirm & Place Order
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
