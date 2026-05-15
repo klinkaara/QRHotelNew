@@ -139,15 +139,19 @@ const OwnerView = () => {
 
   const fetchAnalytics = async (date) => {
     try {
-      // Fetch summary for the specific date
+      // Use the main summary endpoint which is most reliable
       const res = await api.get(`/api/analytics/summary?date=${date}`);
       setDashboardSummary(res.data);
-
-      // Fetch historical data (per day if date provided)
-      const histRes = await api.get(`/api/analytics/historical-revenue?date=${date}`);
-      setHistoricalData(histRes.data);
+      
+      // Simplify historical data to just Daily vs Monthly comparison
+      const histData = [
+        { label: 'Selected Day', revenue: res.data.today_revenue || 0 },
+        { label: 'Month Total', revenue: res.data.month_revenue || 0 }
+      ];
+      setHistoricalData(histData);
     } catch (err) {
       console.error(err);
+      setHistoricalData([]);
     }
   };
 
@@ -436,17 +440,7 @@ const OwnerView = () => {
           <button className={`modern-button ${activeTab === 'menu' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('menu')}>Menu</button>
           <button className={`modern-button ${activeTab === 'analytics' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('analytics')}>Analytics & History</button>
           <button className={`modern-button ${activeTab === 'notes' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('notes')}>Notes</button>
-
-          <button
-            className="modern-button"
-            style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: showRevenue ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)' }}
-            onClick={() => setShowRevenue(!showRevenue)}
-            title="Toggle Revenue Visibility"
-          >
-            {showRevenue ? <Eye size={18} /> : <EyeOff size={18} />}
-            <span style={{ fontSize: '14px' }}>{showRevenue ? 'Hide' : 'Show'} Revenue</span>
-          </button>
-
+          
           <button onClick={logout} className="modern-button danger" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <LogOut size={18} />
             Logout
@@ -649,14 +643,8 @@ const OwnerView = () => {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
-                          <div style={{
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                            color: 'white',
-                            filter: showRevenue ? 'none' : 'blur(4px)',
-                            transition: 'filter 0.3s ease'
-                          }}>
-                            Total: {showRevenue ? `$${(order.total_amount || 0).toFixed(2)}` : '$**.**'}
+                          <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
+                            Total: ${(order.total_amount || 0).toFixed(2)}
                           </div>
                           {order.status === 'Confirmed' && (
                             <button
@@ -685,13 +673,8 @@ const OwnerView = () => {
                     <button className="modern-button danger" style={{ width: 'auto', padding: '12px 24px' }} onClick={() => handleForceCloseTable(selectedTable.table_number, selectedTable.current_session_id)}>
                       Close Table
                     </button>
-                    <span style={{
-                      fontSize: '28px',
-                      fontWeight: 'bold',
-                      filter: showRevenue ? 'none' : 'blur(10px)',
-                      transition: 'filter 0.3s ease'
-                    }}>
-                      Total Bill: {showRevenue ? `$${tableOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toFixed(2)}` : '$****.**'}
+                    <span style={{ fontSize: '28px', fontWeight: 'bold' }}>
+                      Total Bill: ${tableOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -758,6 +741,16 @@ const OwnerView = () => {
 
       {activeTab === 'analytics' && (
         <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+             <button 
+                className="modern-button" 
+                style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: showRevenue ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)' }} 
+                onClick={() => setShowRevenue(!showRevenue)}
+              >
+                {showRevenue ? <Eye size={18} /> : <EyeOff size={18} />}
+                <span style={{ fontSize: '14px' }}>{showRevenue ? 'Hide' : 'Show'} Amounts</span>
+              </button>
+          </div>
           {dashboardSummary ? (
             <div style={{ display: 'flex', gap: '24px' }}>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
@@ -784,35 +777,43 @@ const OwnerView = () => {
           ) : <p>Loading summary...</p>}
 
           <div className="responsive-grid">
-            <div className="glass-panel" style={{ flex: 2 }}>
+            <div className="glass-panel" style={{ flex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <h3 style={{ margin: 0 }}>Revenue Breakdown</h3>
-                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Showing trends for selected period</span>
+                <h3 style={{ margin: 0 }}>Revenue Comparison</h3>
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Day vs Month</span>
               </div>
               {historicalData.length > 0 ? (
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '300px', padding: '20px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflowX: 'auto' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '32px', height: '300px', padding: '20px 40px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px' }}>
                   {historicalData.map(data => {
                     const maxRevenue = Math.max(...historicalData.map(d => d.revenue));
                     const heightPercentage = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
                     return (
-                      <div key={data.sort_key || data.label} style={{ flex: 1, minWidth: historicalData.length > 15 ? '30px' : 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                        <span style={{
-                          fontSize: '9px',
-                          marginBottom: '8px',
-                          color: 'white',
+                      <div key={data.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                        <span style={{ 
+                          fontSize: '14px', 
+                          marginBottom: '12px', 
+                          color: 'white', 
                           fontWeight: 'bold',
-                          filter: showRevenue ? 'none' : 'blur(4px)',
+                          filter: showRevenue ? 'none' : 'blur(6px)',
                           transition: 'filter 0.3s ease'
                         }}>
-                          {showRevenue ? `$${(data.revenue || 0).toFixed(0)}` : '$***'}
+                          {showRevenue ? `$${(data.revenue || 0).toFixed(2)}` : '$****.**'}
                         </span>
-                        <div style={{ width: '100%', maxWidth: '30px', height: `${heightPercentage}%`, background: 'var(--primary-color)', borderRadius: '4px 4px 0 0', transition: 'height 0.5s ease-out', opacity: data.revenue > 0 ? 1 : 0.2 }}></div>
-                        <span style={{ marginTop: '12px', fontSize: '9px', color: '#94a3b8', whiteSpace: 'nowrap', transform: historicalData.length > 10 ? 'rotate(-45deg)' : 'none' }}>{data.label}</span>
+                        <div style={{ 
+                          width: '100%', 
+                          maxWidth: '80px', 
+                          height: `${heightPercentage}%`, 
+                          background: data.label === 'Selected Day' ? 'var(--accent-color)' : 'var(--primary-color)', 
+                          borderRadius: '12px 12px 0 0', 
+                          transition: 'height 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+                        }}></div>
+                        <span style={{ marginTop: '16px', fontSize: '14px', color: '#94a3b8', fontWeight: 'medium' }}>{data.label}</span>
                       </div>
                     );
                   })}
                 </div>
-              ) : <p>No historical data available for this period.</p>}
+              ) : <p>Loading data...</p>}
             </div>
 
             <div className="glass-panel">
