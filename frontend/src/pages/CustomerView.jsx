@@ -18,12 +18,11 @@ const CustomerView = () => {
   const fetchMenu = async () => {
     try {
       const res = await api.get('/api/menu/');
-      setMenu(res.data);
-      const uniqueCategories = [...new Set(res.data.map(item => item.category))];
-      setCategories(uniqueCategories);
-      if (uniqueCategories.length > 0) {
-        setSelectedCategory(uniqueCategories[0]);
-      }
+      const activeItems = res.data.filter(i => i.is_active);
+      setMenu(activeItems);
+      const uniqueCats = [...new Set(activeItems.map(i => i.category))];
+      setCategories(uniqueCats);
+      if (uniqueCats.length > 0) setSelectedCategory(uniqueCats[0]);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -34,9 +33,7 @@ const CustomerView = () => {
   const addToCart = (item) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
+      if (existing) return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
       return [...prev, { ...item, quantity: 1 }];
     });
   };
@@ -52,6 +49,10 @@ const CustomerView = () => {
       }
       return updated;
     });
+  };
+
+  const removeFromCart = (idx) => {
+    setCart(prev => prev.filter((_, i) => i !== idx));
   };
 
   const placeOrder = async () => {
@@ -70,121 +71,115 @@ const CustomerView = () => {
     }
   };
 
-  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f8f9fa' }}>Loading Menu...</div>;
+  if (loading) return <div className="loading">Loading...</div>;
 
   return (
-    <div style={{ background: '#f8f9fa', minHeight: '100vh', padding: '16px', fontFamily: 'sans-serif' }}>
-      
-      {/* Horizontal Categories */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '12px', 
-        overflowX: 'auto', 
-        paddingBottom: '16px', 
-        whiteSpace: 'nowrap',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none'
-      }} className="hide-scrollbar">
-        {categories.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '8px',
-              border: '1px solid #ddd',
-              background: selectedCategory === cat ? '#10b981' : '#fff',
-              color: selectedCategory === cat ? '#fff' : '#333',
-              fontWeight: '500',
-              cursor: 'pointer',
-              fontSize: '14px',
-              transition: 'all 0.2s'
-            }}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
+    <div className="app-container">
+      <header style={{ marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '24px', margin: 0 }}>Welcome to our Restaurant</h1>
+        <p style={{ color: '#94a3b8', margin: '4px 0' }}>Table #{tableId}</p>
+      </header>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-        
-        {/* Items List */}
-        <div style={{ 
-          background: '#fff', 
-          borderRadius: '12px', 
-          border: '1px solid #eee', 
-          padding: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-        }}>
-          <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', color: '#333' }}>{selectedCategory}</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {menu.filter(item => item.category === selectedCategory && item.is_active).map(item => (
-              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #f0f0f0' }}>
-                <span style={{ fontSize: '15px', color: '#444', fontWeight: '500' }}>{item.name}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <span style={{ color: '#10b981', fontWeight: '600' }}>₹{Number(item.price).toFixed(0)}</span>
-                  <button 
-                    onClick={() => addToCart(item)}
-                    style={{
-                      background: '#fff',
-                      border: '1px solid #10b981',
-                      color: '#10b981',
-                      padding: '4px 12px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '600'
-                    }}
-                  >
-                    Add
-                  </button>
+      <div className="customer-layout">
+        <div>
+          {/* Categories Bar */}
+          <div style={{ position: 'relative', width: '100%', marginBottom: '16px' }}>
+            <div style={{ 
+              display: 'flex', 
+              gap: '12px', 
+              overflowX: 'auto', 
+              padding: '12px 4px 16px 4px', 
+              position: 'sticky',
+              top: '0',
+              zIndex: '100',
+              background: 'var(--bg-color)',
+              WebkitOverflowScrolling: 'touch',
+              width: '100%',
+              maxWidth: '100%'
+            }} className="category-scroll">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    border: '1px solid var(--glass-border)',
+                    background: selectedCategory === cat ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
+                    color: 'white',
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    fontWeight: selectedCategory === cat ? 'bold' : 'normal',
+                    transition: 'all 0.3s ease',
+                    fontSize: '13px',
+                    boxShadow: selectedCategory === cat ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none'
+                  }}
+                >
+                  {cat || 'Other'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Menu Items */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {menu.filter(i => i.category === selectedCategory).map(item => (
+              <div key={item.id} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: '10px' }}>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: 0, fontSize: '15px' }}>{item.name}</h4>
+                  <p style={{ margin: '2px 0 0 0', color: 'var(--success-color)', fontWeight: 'bold', fontSize: '14px' }}>₹{Number(item.price).toFixed(2)}</p>
                 </div>
+                <button 
+                  className="modern-button primary" 
+                  style={{ padding: '6px 16px', fontSize: '13px', height: 'fit-content' }}
+                  onClick={() => addToCart(item)}
+                >
+                  Add
+                </button>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Cart Summary (Simple) */}
-        {cart.length > 0 && (
-          <div style={{ 
-            background: '#fff', 
-            borderRadius: '12px', 
-            border: '1px solid #eee', 
-            padding: '20px',
-            position: 'sticky',
-            bottom: '20px',
-            boxShadow: '0 -4px 12px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <span style={{ fontWeight: '600' }}>{cart.length} Items in Cart</span>
-              <span style={{ fontWeight: 'bold', color: '#10b981', fontSize: '18px' }}>
-                ₹{cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(0)}
-              </span>
-            </div>
-            <button 
-              onClick={placeOrder}
-              style={{
-                width: '100%',
-                padding: '14px',
-                background: '#10b981',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                cursor: 'pointer'
-              }}
-            >
-              Place Order
-            </button>
+        {/* Cart */}
+        <div className="glass-panel" style={{ height: 'fit-content', position: 'sticky', top: '100px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <ShoppingCart />
+            <h3>Your Cart</h3>
           </div>
-        )}
+          {cart.length === 0 ? <p style={{ color: '#94a3b8' }}>Cart is empty</p> : (
+            <>
+              {cart.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
+                    <span style={{ fontWeight: 'bold' }}>{item.name}</span>
+                    <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '8px' }}>
+                      <button style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer' }} onClick={() => updateQuantity(idx, -1)}>
+                        <Minus size={14} />
+                      </button>
+                      <span style={{ fontSize: '14px' }}>{item.quantity}</span>
+                      <button style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer' }} onClick={() => updateQuantity(idx, 1)}>
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    <button style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer' }} onClick={() => removeFromCart(idx)}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', margin: '16px 0' }}>
+                <span>Total:</span>
+                <span>₹{cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
+              </div>
+              <button className="modern-button success" onClick={placeOrder}>Place Order</button>
+            </>
+          )}
+        </div>
       </div>
-
-      <style>{`
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
     </div>
   );
 };
