@@ -44,6 +44,11 @@ const OwnerView = () => {
   const [historicalData, setHistoricalData] = useState([]);
   const [dailyOrders, setDailyOrders] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterType, setFilterType] = useState('today'); // today, yesterday, week, month, custom
+  const [customRange, setCustomRange] = useState({ 
+    start: new Date().toISOString().split('T')[0], 
+    end: new Date().toISOString().split('T')[0] 
+  });
 
   // Notes State
   const [notes, setNotes] = useState([]);
@@ -137,14 +142,24 @@ const OwnerView = () => {
     }
   };
 
-  const fetchAnalytics = async (date) => {
+  const fetchAnalytics = async (filter, custom = null) => {
     try {
-      // Try 'summary' first, then 'dashboard' as a fallback
+      let url = `/api/analytics/summary?filter=${filter}`;
+      if (filter === 'custom' && custom) {
+        url += `&start_date=${custom.start}&end_date=${custom.end}`;
+      } else if (filter === 'today' || filter === 'yesterday') {
+        // Fallback for single date compatibility
+        const targetDate = filter === 'today' ? new Date().toISOString().split('T')[0] : 
+                          new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        url += `&date=${targetDate}`;
+      }
+
       let res;
       try {
-        res = await api.get(`/api/analytics/summary?date=${date}`);
+        res = await api.get(url);
       } catch (e) {
-        res = await api.get(`/api/analytics/dashboard?date=${date}`);
+        // Fallback to old dashboard endpoint if needed
+        res = await api.get(`/api/analytics/dashboard?filter=${filter}`);
       }
 
       if (res.data) {
@@ -158,12 +173,22 @@ const OwnerView = () => {
     }
   };
 
-  const fetchDailyOrders = async (date) => {
+  const fetchDailyOrders = async (filter, custom = null) => {
     try {
-      const res = await api.get(`/api/analytics/daily-orders?date_str=${date}`);
+      let url = `/api/analytics/daily-orders?filter=${filter}`;
+      if (filter === 'custom' && custom) {
+        url += `&start_date=${custom.start}&end_date=${custom.end}`;
+      } else if (filter === 'today' || filter === 'yesterday') {
+        const targetDate = filter === 'today' ? new Date().toISOString().split('T')[0] : 
+                          new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        url += `&date_str=${targetDate}`;
+      }
+
+      const res = await api.get(url);
       setDailyOrders(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Orders fetch failed:", err);
+      setDailyOrders([]);
     }
   };
 
@@ -229,12 +254,12 @@ const OwnerView = () => {
   useEffect(() => {
     localStorage.setItem('owner_active_tab', activeTab);
     if (activeTab === 'analytics') {
-      fetchAnalytics(selectedDate);
-      fetchDailyOrders(selectedDate);
+      fetchAnalytics(filterType, customRange);
+      fetchDailyOrders(filterType, customRange);
     } else if (activeTab === 'notes') {
       fetchNotes();
     }
-  }, [activeTab, selectedDate]);
+  }, [activeTab, filterType, customRange]);
 
   const handleTableClick = (table) => {
     setSelectedTable(table);
@@ -744,7 +769,19 @@ const OwnerView = () => {
 
       {activeTab === 'analytics' && (
         <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {['today', 'yesterday', 'week', 'month', 'custom'].map(type => (
+                  <button 
+                    key={type}
+                    className={`modern-button ${filterType === type ? 'success' : ''}`}
+                    style={{ width: 'auto', padding: '8px 16px', fontSize: '14px', textTransform: 'capitalize' }}
+                    onClick={() => setFilterType(type)}
+                  >
+                    {type}
+                  </button>
+                ))}
+             </div>
              <button 
                 className="modern-button" 
                 style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: showRevenue ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)' }} 
@@ -754,10 +791,24 @@ const OwnerView = () => {
                 <span style={{ fontSize: '14px' }}>{showRevenue ? 'Hide' : 'Show'} Amounts</span>
               </button>
           </div>
+
+          {filterType === 'custom' && (
+            <div className="glass-panel" style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px', color: '#94a3b8' }}>From:</span>
+                <input type="date" className="modern-input" style={{ width: 'auto', margin: 0 }} value={customRange.start} onChange={e => setCustomRange({...customRange, start: e.target.value})} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px', color: '#94a3b8' }}>To:</span>
+                <input type="date" className="modern-input" style={{ width: 'auto', margin: 0 }} value={customRange.end} onChange={e => setCustomRange({...customRange, end: e.target.value})} />
+              </div>
+            </div>
+          )}
+
           {dashboardSummary ? (
             <div style={{ display: 'flex', gap: '24px' }}>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
-                <h3 style={{ color: '#94a3b8' }}>Revenue ({selectedDate})</h3>
+                <h3 style={{ color: '#94a3b8' }}>Total Revenue</h3>
                 <p style={{ 
                   fontSize: '36px', 
                   fontWeight: 'bold', 
@@ -765,12 +816,12 @@ const OwnerView = () => {
                   filter: showRevenue ? 'none' : 'blur(8px)',
                   transition: 'filter 0.3s ease'
                 }}>
-                  {showRevenue ? `$${(dashboardSummary.today_revenue || 0).toFixed(2)}` : '$****.**'}
+                  {showRevenue ? `$${(dashboardSummary.today_revenue || dashboardSummary.total_revenue || 0).toFixed(2)}` : '$****.**'}
                 </p>
               </div>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
-                <h3 style={{ color: '#94a3b8' }}>Orders</h3>
-                <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{dashboardSummary.today_orders}</p>
+                <h3 style={{ color: '#94a3b8' }}>Total Orders</h3>
+                <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{dashboardSummary.today_orders || dashboardSummary.total_orders || 0}</p>
               </div>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
                 <h3 style={{ color: '#94a3b8' }}>Active Tables</h3>
@@ -781,23 +832,18 @@ const OwnerView = () => {
 
           <div className="glass-panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3 style={{ margin: 0 }}>Order History</h3>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <span style={{ fontSize: '14px', color: '#94a3b8' }}>Select Date:</span>
-                <input
-                  type="date"
-                  className="modern-input"
-                  style={{ width: 'auto', margin: 0 }}
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                />
-              </div>
+              <h3 style={{ margin: 0 }}>
+                {filterType === 'today' ? 'Today\'s Orders' : 
+                 filterType === 'yesterday' ? 'Yesterday\'s Orders' : 
+                 filterType === 'week' ? 'This Week\'s Orders' : 
+                 filterType === 'month' ? 'This Month\'s Orders' : 'Order History'}
+              </h3>
             </div>
             
             <div style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '8px' }}>
               {dailyOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                  No orders found for this date.
+                  No orders found for this selection.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -806,7 +852,9 @@ const OwnerView = () => {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <strong>Table {session.table_number}</strong>
-                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>{new Date(session.created_at).toLocaleTimeString()}</div>
+                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                            {new Date(session.created_at).toLocaleDateString()} {new Date(session.created_at).toLocaleTimeString()}
+                          </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ 
