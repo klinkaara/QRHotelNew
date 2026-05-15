@@ -45,9 +45,9 @@ const OwnerView = () => {
   const [dailyOrders, setDailyOrders] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterType, setFilterType] = useState('today'); // today, yesterday, week, month, custom
-  const [customRange, setCustomRange] = useState({ 
-    start: new Date().toISOString().split('T')[0], 
-    end: new Date().toISOString().split('T')[0] 
+  const [customRange, setCustomRange] = useState({
+    start: new Date().toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
   });
 
   // Notes State
@@ -144,47 +144,66 @@ const OwnerView = () => {
 
   const fetchAnalytics = async (filter, custom = null) => {
     try {
-      let url = `/api/analytics/summary?filter=${filter}`;
+      let params = new URLSearchParams();
+      params.append('filter', filter);
+
       if (filter === 'custom' && custom) {
-        url += `&start_date=${custom.start}&end_date=${custom.end}`;
-      } else if (filter === 'today' || filter === 'yesterday') {
-        // Fallback for single date compatibility
-        const targetDate = filter === 'today' ? new Date().toISOString().split('T')[0] : 
-                          new Date(Date.now() - 86400000).toISOString().split('T')[0];
-        url += `&date=${targetDate}`;
+        params.append('start_date', custom.start);
+        params.append('end_date', custom.end);
+      } else if (filter === 'today') {
+        params.append('date', new Date().toISOString().split('T')[0]);
+      } else if (filter === 'yesterday') {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        params.append('date', yesterday.toISOString().split('T')[0]);
+      } else if (filter === 'week') {
+        const start = new Date();
+        start.setDate(start.getDate() - 7);
+        params.append('start_date', start.toISOString().split('T')[0]);
+        params.append('end_date', new Date().toISOString().split('T')[0]);
+      } else if (filter === 'month') {
+        const start = new Date();
+        start.setDate(1);
+        params.append('start_date', start.toISOString().split('T')[0]);
+        params.append('end_date', new Date().toISOString().split('T')[0]);
       }
 
-      let res;
-      try {
-        res = await api.get(url);
-      } catch (e) {
-        // Fallback to old dashboard endpoint if needed
-        res = await api.get(`/api/analytics/dashboard?filter=${filter}`);
-      }
-
+      const res = await api.get(`/api/analytics/summary?${params.toString()}`);
       if (res.data) {
         setDashboardSummary(res.data);
       }
     } catch (err) {
       console.error("Analytics fetch failed:", err);
-      if (!dashboardSummary) {
-        setDashboardSummary({ today_revenue: 0, today_orders: 0, active_tables: 0 });
-      }
     }
   };
 
   const fetchDailyOrders = async (filter, custom = null) => {
     try {
-      let url = `/api/analytics/daily-orders?filter=${filter}`;
+      let params = new URLSearchParams();
+      params.append('filter', filter);
+
       if (filter === 'custom' && custom) {
-        url += `&start_date=${custom.start}&end_date=${custom.end}`;
-      } else if (filter === 'today' || filter === 'yesterday') {
-        const targetDate = filter === 'today' ? new Date().toISOString().split('T')[0] : 
-                          new Date(Date.now() - 86400000).toISOString().split('T')[0];
-        url += `&date_str=${targetDate}`;
+        params.append('start_date', custom.start);
+        params.append('end_date', custom.end);
+      } else if (filter === 'today') {
+        params.append('date_str', new Date().toISOString().split('T')[0]);
+      } else if (filter === 'yesterday') {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        params.append('date_str', yesterday.toISOString().split('T')[0]);
+      } else if (filter === 'week') {
+        const start = new Date();
+        start.setDate(start.getDate() - 7);
+        params.append('start_date', start.toISOString().split('T')[0]);
+        params.append('end_date', new Date().toISOString().split('T')[0]);
+      } else if (filter === 'month') {
+        const start = new Date();
+        start.setDate(1);
+        params.append('start_date', start.toISOString().split('T')[0]);
+        params.append('end_date', new Date().toISOString().split('T')[0]);
       }
 
-      const res = await api.get(url);
+      const res = await api.get(`/api/analytics/daily-orders?${params.toString()}`);
       setDailyOrders(res.data);
     } catch (err) {
       console.error("Orders fetch failed:", err);
@@ -468,7 +487,7 @@ const OwnerView = () => {
           <button className={`modern-button ${activeTab === 'menu' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('menu')}>Menu</button>
           <button className={`modern-button ${activeTab === 'analytics' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('analytics')}>Analytics & History</button>
           <button className={`modern-button ${activeTab === 'notes' ? 'success' : ''}`} style={{ width: 'auto' }} onClick={() => setActiveTab('notes')}>Notes</button>
-          
+
           <button onClick={logout} className="modern-button danger" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <LogOut size={18} />
             Logout
@@ -770,37 +789,37 @@ const OwnerView = () => {
       {activeTab === 'analytics' && (
         <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {['today', 'yesterday', 'week', 'month', 'custom'].map(type => (
-                  <button 
-                    key={type}
-                    className={`modern-button ${filterType === type ? 'success' : ''}`}
-                    style={{ width: 'auto', padding: '8px 16px', fontSize: '14px', textTransform: 'capitalize' }}
-                    onClick={() => setFilterType(type)}
-                  >
-                    {type}
-                  </button>
-                ))}
-             </div>
-             <button 
-                className="modern-button" 
-                style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: showRevenue ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)' }} 
-                onClick={() => setShowRevenue(!showRevenue)}
-              >
-                {showRevenue ? <Eye size={18} /> : <EyeOff size={18} />}
-                <span style={{ fontSize: '14px' }}>{showRevenue ? 'Hide' : 'Show'} Amounts</span>
-              </button>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {['today', 'yesterday', 'week', 'month', 'custom'].map(type => (
+                <button
+                  key={type}
+                  className={`modern-button ${filterType === type ? 'success' : ''}`}
+                  style={{ width: 'auto', padding: '8px 16px', fontSize: '14px', textTransform: 'capitalize' }}
+                  onClick={() => setFilterType(type)}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+            <button
+              className="modern-button"
+              style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: showRevenue ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)' }}
+              onClick={() => setShowRevenue(!showRevenue)}
+            >
+              {showRevenue ? <Eye size={18} /> : <EyeOff size={18} />}
+              <span style={{ fontSize: '14px' }}>{showRevenue ? 'Hide' : 'Show'} Amounts</span>
+            </button>
           </div>
 
           {filterType === 'custom' && (
             <div className="glass-panel" style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '14px', color: '#94a3b8' }}>From:</span>
-                <input type="date" className="modern-input" style={{ width: 'auto', margin: 0 }} value={customRange.start} onChange={e => setCustomRange({...customRange, start: e.target.value})} />
+                <input type="date" className="modern-input" style={{ width: 'auto', margin: 0 }} value={customRange.start} onChange={e => setCustomRange({ ...customRange, start: e.target.value })} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '14px', color: '#94a3b8' }}>To:</span>
-                <input type="date" className="modern-input" style={{ width: 'auto', margin: 0 }} value={customRange.end} onChange={e => setCustomRange({...customRange, end: e.target.value})} />
+                <input type="date" className="modern-input" style={{ width: 'auto', margin: 0 }} value={customRange.end} onChange={e => setCustomRange({ ...customRange, end: e.target.value })} />
               </div>
             </div>
           )}
@@ -809,9 +828,9 @@ const OwnerView = () => {
             <div style={{ display: 'flex', gap: '24px' }}>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
                 <h3 style={{ color: '#94a3b8' }}>Total Revenue</h3>
-                <p style={{ 
-                  fontSize: '36px', 
-                  fontWeight: 'bold', 
+                <p style={{
+                  fontSize: '36px',
+                  fontWeight: 'bold',
                   color: 'var(--accent-color)',
                   filter: showRevenue ? 'none' : 'blur(8px)',
                   transition: 'filter 0.3s ease'
@@ -833,13 +852,13 @@ const OwnerView = () => {
           <div className="glass-panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h3 style={{ margin: 0 }}>
-                {filterType === 'today' ? 'Today\'s Orders' : 
-                 filterType === 'yesterday' ? 'Yesterday\'s Orders' : 
-                 filterType === 'week' ? 'This Week\'s Orders' : 
-                 filterType === 'month' ? 'This Month\'s Orders' : 'Order History'}
+                {filterType === 'today' ? 'Today\'s Orders' :
+                  filterType === 'yesterday' ? 'Yesterday\'s Orders' :
+                    filterType === 'week' ? 'This Week\'s Orders' :
+                      filterType === 'month' ? 'This Month\'s Orders' : 'Order History'}
               </h3>
             </div>
-            
+
             <div style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: '8px' }}>
               {dailyOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
@@ -857,8 +876,8 @@ const OwnerView = () => {
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ 
-                            color: 'var(--accent-color)', 
+                          <div style={{
+                            color: 'var(--accent-color)',
                             fontWeight: 'bold',
                             fontSize: '18px',
                             filter: showRevenue ? 'none' : 'blur(4px)',
