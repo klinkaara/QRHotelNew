@@ -266,36 +266,47 @@ const CustomerView = () => {
                    {o.items.map((item, idx) => (
                      <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                        <span>{item.quantity}x {item.name}</span>
-                       <span>${(item.price * item.quantity).toFixed(2)}</span>
+                       <span>₹{(item.price * item.quantity).toFixed(2)}</span>
                      </li>
                    ))}
                  </ul>
                )}
                <div style={{ textAlign: 'right', fontWeight: 'bold', color: 'var(--accent-color)' }}>
-                 Total: ${(o.total_amount || 0).toFixed(2)}
+                 Total: ₹{(o.total_amount || 0).toFixed(2)}
                </div>
              </div>
            ))}
            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed rgba(255,255,255,0.2)', textAlign: 'right', fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
-             Grand Total: ${liveOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toFixed(2)}
+             Grand Total: ₹{liveOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toFixed(2)}
            </div>
          </div>
       )}
 
       <div className="customer-layout">
         <div>
-          <h3 style={{ marginBottom: '16px' }}>Menu</h3>
-          <div className="grid-cards">
-            {menu.map(item => (
-              <div key={item.id} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', padding: '16px' }}>
-                <div style={{ flexGrow: 1 }}>
-                  <h4>{item.name}</h4>
-                  <p style={{ color: '#94a3b8', fontSize: '14px', margin: '8px 0' }}>{item.description}</p>
-                  <p style={{ fontWeight: 'bold', color: 'var(--accent-color)' }}>${item.price.toFixed(2)}</p>
+          <h3 style={{ marginBottom: '24px' }}>Menu</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            {['Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg'].map(cat => {
+              const items = menu.filter(i => i.category === cat && i.is_active);
+              if (items.length === 0) return null;
+              return (
+                <div key={cat}>
+                  <h4 style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px', marginBottom: '20px', color: 'var(--accent-color)', fontSize: '20px' }}>{cat}</h4>
+                  <div className="grid-cards">
+                    {items.map(item => (
+                      <div key={item.id} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', padding: '16px' }}>
+                        <div style={{ flexGrow: 1 }}>
+                          <h4 style={{ fontSize: '18px' }}>{item.name}</h4>
+                          <p style={{ color: '#94a3b8', fontSize: '14px', margin: '8px 0' }}>{item.description}</p>
+                          <p style={{ fontWeight: 'bold', color: 'var(--accent-color)', fontSize: '16px' }}>₹{item.price.toFixed(2)}</p>
+                        </div>
+                        <button className="modern-button" style={{ marginTop: '16px' }} onClick={() => addToCart(item)}>Add to Cart</button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <button className="modern-button" style={{ marginTop: '16px' }} onClick={() => addToCart(item)}>Add to Cart</button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -311,7 +322,7 @@ const CustomerView = () => {
                 <div key={idx} style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
                     <span style={{ fontWeight: 'bold' }}>{item.name}</span>
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    <span>₹{(item.price * item.quantity).toFixed(2)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '8px' }}>
@@ -332,7 +343,7 @@ const CustomerView = () => {
               <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '16px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '16px' }}>
                 <span>Total:</span>
-                <span>${getCartTotal().toFixed(2)}</span>
+                <span>₹{getCartTotal().toFixed(2)}</span>
               </div>
               <button className="modern-button success" onClick={placeOrder}>Place Order</button>
             </>

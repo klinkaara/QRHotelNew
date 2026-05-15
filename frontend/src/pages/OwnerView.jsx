@@ -37,7 +37,11 @@ const OwnerView = () => {
 
   // Menu form state
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState({ name: '', description: '', price: '', category: '', is_active: true });
+  const [formData, setFormData] = useState({ name: '', description: '', price: '', category: 'Veg Starters', is_active: true });
+  const categories = [
+    'Andhra Style', 'Veg Soup', 'Non-Veg Soup', 'Veg Starters', 'Non-Veg Starters', 
+    'Veg Tandoori', 'Non-Veg Tandoori', 'Indian Main Course Veg', 'Indian Main Course Non-Veg'
+  ];
 
   // Analytics State
   const [dashboardSummary, setDashboardSummary] = useState(null);
@@ -703,7 +707,7 @@ const OwnerView = () => {
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
                           <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'white' }}>
-                            Total: ${(order.total_amount || 0).toFixed(2)}
+                            Total: ₹{(order.total_amount || 0).toFixed(2)}
                           </div>
                           {order.status === 'Confirmed' && (
                             <button
@@ -733,7 +737,7 @@ const OwnerView = () => {
                       Close Table
                     </button>
                     <span style={{ fontSize: '28px', fontWeight: 'bold' }}>
-                      Total Bill: ${tableOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toFixed(2)}
+                      Total Bill: ₹{tableOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -750,14 +754,16 @@ const OwnerView = () => {
             <form onSubmit={handleMenuSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input className="modern-input" style={{ marginBottom: 0 }} placeholder="Item Name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
               <input className="modern-input" style={{ marginBottom: 0 }} placeholder="Description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
-              <input type="number" step="0.01" className="modern-input" style={{ marginBottom: 0 }} placeholder="Price ($)" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} required />
-              <input className="modern-input" style={{ marginBottom: 0 }} placeholder="Category" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required />
+              <input type="number" step="0.01" className="modern-input" style={{ marginBottom: 0 }} placeholder="Price (₹)" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} required />
+              <select className="modern-input" style={{ marginBottom: 0 }} value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input type="checkbox" checked={formData.is_active} onChange={e => setFormData({ ...formData, is_active: e.target.checked })} />
                 Active on Menu
               </label>
               <button type="submit" className="modern-button success" style={{ marginTop: '8px' }}>{editingItem ? 'Update Item' : 'Add Item'}</button>
-              {editingItem && <button type="button" className="modern-button" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }} onClick={() => { setEditingItem(null); setFormData({ name: '', description: '', price: '', category: '', is_active: true }); }}>Cancel</button>}
+              {editingItem && <button type="button" className="modern-button" style={{ background: 'transparent', border: '1px solid var(--glass-border)' }} onClick={() => { setEditingItem(null); setFormData({ name: '', description: '', price: '', category: 'Veg Starters', is_active: true }); }}>Cancel</button>}
             </form>
           </div>
 
@@ -778,7 +784,7 @@ const OwnerView = () => {
                   <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <td style={{ padding: '12px' }}>{item.name}</td>
                     <td style={{ padding: '12px' }}>{item.category}</td>
-                    <td style={{ padding: '12px' }}>${(item.price || 0).toFixed(2)}</td>
+                    <td style={{ padding: '12px' }}>₹{(item.price || 0).toFixed(2)}</td>
                     <td style={{ padding: '12px' }}>
                       <span className={`status-badge status-${item.is_active ? 'Available' : 'Awaiting'}`}>{item.is_active ? 'Active' : 'Hidden'}</span>
                     </td>
@@ -840,14 +846,14 @@ const OwnerView = () => {
             <div style={{ display: 'flex', gap: '24px' }}>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
                 <h3 style={{ color: '#94a3b8' }}>Total Revenue</h3>
-                <p style={{
-                  fontSize: '36px',
-                  fontWeight: 'bold',
+                <p style={{ 
+                  fontSize: '36px', 
+                  fontWeight: 'bold', 
                   color: 'var(--accent-color)',
                   filter: showRevenue ? 'none' : 'blur(8px)',
                   transition: 'filter 0.3s ease'
                 }}>
-                  {showRevenue ? `$${(dashboardSummary.today_revenue || dashboardSummary.total_revenue || 0).toFixed(2)}` : '$****.**'}
+                  {showRevenue ? `₹${(dashboardSummary.today_revenue || dashboardSummary.total_revenue || 0).toFixed(2)}` : '₹****.**'}
                 </p>
               </div>
               <div className="glass-panel" style={{ flex: 1, textAlign: 'center' }}>
@@ -888,14 +894,14 @@ const OwnerView = () => {
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{
-                            color: 'var(--accent-color)',
+                          <div style={{ 
+                            color: 'var(--accent-color)', 
                             fontWeight: 'bold',
                             fontSize: '18px',
                             filter: showRevenue ? 'none' : 'blur(4px)',
                             transition: 'filter 0.3s ease'
                           }}>
-                            {showRevenue ? `$${(session.total_amount || 0).toFixed(2)}` : '$**.**'}
+                            {showRevenue ? `₹${(session.total_amount || 0).toFixed(2)}` : '₹**.**'}
                           </div>
                           <div style={{ fontSize: '12px', opacity: 0.7 }}>{session.status}</div>
                         </div>
