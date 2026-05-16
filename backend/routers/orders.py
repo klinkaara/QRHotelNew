@@ -31,6 +31,12 @@ async def create_order(order_data: schemas.OrderCreate, db: Session = Depends(da
             special_instructions=item.special_instructions
         ))
 
+    # Check if this session already has a confirmed order
+    has_confirmed = db.query(models.Order).filter(
+        models.Order.session_id == db_session.id,
+        models.Order.status != "Pending"
+    ).first()
+
     # Reuse OTP if this session already has one
     existing_order = db.query(models.Order).filter(models.Order.session_id == db_session.id).first()
     if existing_order and existing_order.otp:
@@ -40,12 +46,14 @@ async def create_order(order_data: schemas.OrderCreate, db: Session = Depends(da
         
     otp_expires = datetime.utcnow() + timedelta(hours=24)
 
+    initial_status = "Confirmed" if has_confirmed else "Pending"
+
     new_order = models.Order(
         session_id=order_data.session_id,
         otp=otp,
         otp_expires_at=otp_expires,
         total_amount=total,
-        status="Pending"
+        status=initial_status
     )
     db.add(new_order)
     db.commit()
@@ -58,15 +66,26 @@ async def create_order(order_data: schemas.OrderCreate, db: Session = Depends(da
     
     table = db.query(models.Table).filter(models.Table.id == db_session.table_id).first()
 
-    # Notify waiters and owners
-    alert_data = {
-        'table_number': table.table_number,
-        'customer_name': db_session.customer_name,
-        'otp': otp,
-        'order_id': new_order.id
-    }
-    await sio.emit('new_otp', alert_data, room='waiter')
-    await sio.emit('new_otp', alert_data, room='owner')
+    if initial_status == "Confirmed":
+        await sio.emit('order_confirmed', {
+            'order_id': new_order.id,
+            'table_number': table.table_number,
+            'total': new_order.total_amount
+        }, room='waiter')
+        await sio.emit('order_status_update', {
+            'order_id': new_order.id,
+            'status': 'Confirmed'
+        }, room=f'table_{table.id}')
+    else:
+        # Notify waiters and owners
+        alert_data = {
+            'table_number': table.table_number,
+            'customer_name': db_session.customer_name,
+            'otp': otp,
+            'order_id': new_order.id
+        }
+        await sio.emit('new_otp', alert_data, room='waiter')
+        await sio.emit('new_otp', alert_data, room='owner')
 
     return new_order
 

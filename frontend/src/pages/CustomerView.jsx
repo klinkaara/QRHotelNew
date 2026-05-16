@@ -208,8 +208,14 @@ const CustomerView = () => {
           special_instructions: "" 
         }))
       });
-      setPendingOrderId(res.data.id);
-      setShowOtpModal(true);
+      if (res.data.status === 'Confirmed') {
+        alert('Order placed successfully!');
+        setCart([]);
+        fetchTableData();
+      } else {
+        setPendingOrderId(res.data.id);
+        setShowOtpModal(true);
+      }
     } catch (err) {
       console.error("Order placement failed", err);
       const detail = err.response?.data?.detail;
@@ -317,16 +323,47 @@ const CustomerView = () => {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Cart & Order History */}
+        <div className="glass-panel" style={{ height: 'fit-content', position: 'sticky', top: '100px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          <div>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}><ShoppingCart /> Selection</h3>
+            {cart.length === 0 ? <p style={{ color: '#94a3b8' }}>Cart is empty</p> : (
+              <>
+                {cart.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{item.name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+                        <button onClick={() => updateQuantity(idx, -1)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><Minus size={14}/></button>
+                        <span>{item.quantity}</span>
+                        <button onClick={() => updateQuantity(idx, 1)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><Plus size={14}/></button>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 'bold' }}>₹{(item.price * item.quantity).toFixed(2)}</div>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '20px', margin: '24px 0' }}>
+                  <span>Total</span>
+                  <span style={{ color: 'var(--accent-color)' }}>₹{cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
+                </div>
+                <button className="modern-button success" onClick={placeOrder}>Place Order</button>
+              </>
+            )}
+          </div>
 
           {/* My Orders */}
           {myOrders.length > 0 && (
-            <div className="glass-panel" style={{ borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.05)' }}>
+            <div style={{ paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontSize: '16px', color: 'var(--accent-color)' }}>
                 <Clock size={18} /> Order History
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {myOrders.map(order => (
-                  <div key={order.id} style={{ paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div key={order.id} style={{ paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#cbd5e1' }}>Order #{order.id}</span>
                       <span className={`status-badge status-${order.status.replace(' ', '')}`}>{order.status}</span>
@@ -349,35 +386,6 @@ const CustomerView = () => {
                 <span style={{ color: 'var(--accent-color)', fontSize: '22px' }}>₹{myOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toFixed(2)}</span>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Cart */}
-        <div className="glass-panel" style={{ height: 'fit-content', position: 'sticky', top: '100px' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}><ShoppingCart /> Selection</h3>
-          {cart.length === 0 ? <p style={{ color: '#94a3b8' }}>Cart is empty</p> : (
-            <>
-              {cart.map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{item.name}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
-                      <button onClick={() => updateQuantity(idx, -1)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><Minus size={14}/></button>
-                      <span>{item.quantity}</span>
-                      <button onClick={() => updateQuantity(idx, 1)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><Plus size={14}/></button>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 'bold' }}>₹{(item.price * item.quantity).toFixed(2)}</div>
-                  </div>
-                </div>
-              ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '20px', margin: '24px 0' }}>
-                <span>Total</span>
-                <span style={{ color: 'var(--accent-color)' }}>₹{cart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
-              </div>
-              <button className="modern-button success" onClick={placeOrder}>Place Order</button>
-            </>
           )}
         </div>
       </div>
