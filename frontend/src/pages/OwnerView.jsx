@@ -92,7 +92,7 @@ const OwnerView = () => {
 
   const fetchMenu = async () => {
     try {
-      const res = await api.get('/api/menu/');
+      const res = await api.get('/api/menu/all');
       setMenu(res.data);
     } catch (err) {
       console.error(err);
@@ -854,8 +854,8 @@ const OwnerView = () => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                             <div style={{ fontWeight: 'bold', color: 'var(--accent-color)', fontSize: '18px' }}>₹{item.price}</div>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                              <button onClick={() => { setEditingItem(item); setFormData({ ...item }); }} className="modern-button" style={{ padding: '8px' }} title="Edit"><Edit2 size={18} /></button>
-                              <button onClick={() => handleDeleteMenuItem(item.id)} className="modern-button danger" style={{ padding: '8px' }} title="Delete"><Trash2 size={18} /></button>
+                              <button onClick={() => editItem(item)} className="modern-button" style={{ padding: '8px' }} title="Edit"><Edit2 size={18} /></button>
+                              <button onClick={() => handleDeleteMenu(item.id)} className="modern-button danger" style={{ padding: '8px' }} title="Delete"><Trash2 size={18} /></button>
                             </div>
                           </div>
                         </div>
