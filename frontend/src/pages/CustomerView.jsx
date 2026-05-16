@@ -24,6 +24,11 @@ const CustomerView = () => {
   const [myOrders, setMyOrders] = useState([]);
   const [tableStatus, setTableStatus] = useState('Available');
 
+  // OTP State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState(null);
+  const [otpInput, setOtpInput] = useState('');
+
   // Initial Check - Verify session with backend
   useEffect(() => {
     const verifySession = async () => {
@@ -172,7 +177,7 @@ const CustomerView = () => {
   const placeOrder = async () => {
     if (cart.length === 0 || !sessionId) return;
     try {
-      await api.post('/api/orders/', {
+      const res = await api.post('/api/orders/', {
         session_id: parseInt(sessionId),
         items: cart.map(i => ({ 
           menu_item_id: i.id, 
@@ -180,14 +185,30 @@ const CustomerView = () => {
           special_instructions: "" 
         }))
       });
-      alert('Order placed successfully!');
-      setCart([]);
-      fetchTableData();
+      setPendingOrderId(res.data.id);
+      setShowOtpModal(true);
     } catch (err) {
       console.error("Order placement failed", err);
       const detail = err.response?.data?.detail;
       const errorMessage = typeof detail === 'string' ? detail : 'Failed to place order. Please try again.';
       alert(errorMessage);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (!otpInput.trim()) return;
+    try {
+      await api.post(`/api/orders/${pendingOrderId}/verify-otp?otp=${otpInput.trim()}`);
+      alert('Order confirmed successfully!');
+      setShowOtpModal(false);
+      setPendingOrderId(null);
+      setOtpInput('');
+      setCart([]);
+      fetchTableData();
+    } catch (err) {
+      console.error("OTP verification failed", err);
+      const detail = err.response?.data?.detail;
+      alert(typeof detail === 'string' ? detail : 'Invalid OTP. Please try again.');
     }
   };
 
@@ -329,6 +350,32 @@ const CustomerView = () => {
           )}
         </div>
       </div>
+
+      {/* OTP Modal */}
+      {showOtpModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="glass-panel" style={{ width: '90%', maxWidth: '400px', textAlign: 'center', padding: '32px' }}>
+            <h2 style={{ marginBottom: '16px' }}>Verify Order</h2>
+            <p style={{ color: '#94a3b8', marginBottom: '24px' }}>Please ask your waiter for the OTP to confirm your order.</p>
+            <input 
+              type="text" 
+              placeholder="Enter OTP" 
+              value={otpInput}
+              onChange={(e) => setOtpInput(e.target.value)}
+              className="modern-input"
+              style={{ marginBottom: '24px', textAlign: 'center', fontSize: '24px', letterSpacing: '4px' }}
+            />
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="modern-button" style={{ background: 'transparent', border: '1px solid #334155' }} onClick={() => setShowOtpModal(false)}>Cancel</button>
+              <button className="modern-button success" onClick={verifyOtp}>Verify</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
