@@ -1,6 +1,7 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-socketio
+websockets
 sqlalchemy
 python-jose
 passlib[bcrypt]

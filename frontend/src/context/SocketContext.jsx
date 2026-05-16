@@ -13,7 +13,13 @@ export const SocketProvider = ({ children }) => {
   const { user } = useAuth();
 
   useEffect(() => {
-    const newSocket = io(API_BASE_URL);
+    const newSocket = io(API_BASE_URL, {
+      transports: ['websocket', 'polling'],
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
