@@ -354,8 +354,8 @@ const CustomerView = () => {
 
         {/* Cart */}
         <div className="glass-panel" style={{ height: 'fit-content', position: 'sticky', top: '100px' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}><ShoppingCart /> Cart</h3>
-          {cart.length === 0 ? <p style={{ color: '#94a3b8' }}>Empty</p> : (
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}><ShoppingCart /> Selection</h3>
+          {cart.length === 0 ? <p style={{ color: '#94a3b8' }}>Cart is empty</p> : (
             <>
               {cart.map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
