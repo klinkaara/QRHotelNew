@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api';
+import { useSocket } from '../context/SocketContext';
 import { ShoppingCart, Plus, Minus, Trash2, User, Phone, LogIn, Receipt, Clock, CheckCircle } from 'lucide-react';
 
 const CustomerView = () => {
   const { id: tableId } = useParams();
+  const socket = useSocket();
   
   // Menu & Cart State
   const [menu, setMenu] = useState([]);
@@ -65,6 +67,27 @@ const CustomerView = () => {
       return () => clearInterval(interval);
     }
   }, [isLoggedIn, sessionId]);
+
+  // Real-time socket updates
+  useEffect(() => {
+    if (socket && tableId && isLoggedIn && sessionId) {
+      socket.emit('join_table_room', { table_id: tableId });
+
+      const handleSocketUpdate = () => {
+        fetchTableData();
+      };
+
+      socket.on('order_status_update', handleSocketUpdate);
+      socket.on('table_status_changed', handleSocketUpdate);
+      socket.on('session_closed', handleSocketUpdate);
+
+      return () => {
+        socket.off('order_status_update', handleSocketUpdate);
+        socket.off('table_status_changed', handleSocketUpdate);
+        socket.off('session_closed', handleSocketUpdate);
+      };
+    }
+  }, [socket, tableId, isLoggedIn, sessionId]);
 
   const fetchMenu = async () => {
     try {
@@ -301,21 +324,29 @@ const CustomerView = () => {
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontSize: '16px', color: 'var(--accent-color)' }}>
                 <Clock size={18} /> Order History
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {myOrders.map(order => (
-                  <div key={order.id} style={{ paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#94a3b8' }}>
-                      <span>Order #{order.id}</span>
-                      <span>{order.status}</span>
+                  <div key={order.id} style={{ paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#cbd5e1' }}>Order #{order.id}</span>
+                      <span className={`status-badge status-${order.status.replace(' ', '')}`}>{order.status}</span>
                     </div>
                     {order.items?.map((item, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginTop: '4px' }}>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginTop: '4px', color: '#94a3b8' }}>
                         <span>{item.quantity}x {item.name}</span>
                         <span>₹{(item.price * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold', marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed rgba(255,255,255,0.05)' }}>
+                      <span>Order Total</span>
+                      <span style={{ color: 'var(--accent-color)' }}>₹{(order.total_amount || 0).toFixed(2)}</span>
+                    </div>
                   </div>
                 ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '16px', fontWeight: 'bold', marginTop: '16px', paddingTop: '16px', borderTop: '2px solid rgba(16, 185, 129, 0.3)' }}>
+                <span>Total Bill Amount</span>
+                <span style={{ color: 'var(--accent-color)', fontSize: '22px' }}>₹{myOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0).toFixed(2)}</span>
               </div>
             </div>
           )}
