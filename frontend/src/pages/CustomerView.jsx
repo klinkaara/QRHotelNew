@@ -4,7 +4,7 @@ import api from '../api';
 import { ShoppingCart, Plus, Minus, Trash2, User, Phone, LogIn, Receipt, Clock, CheckCircle } from 'lucide-react';
 
 const CustomerView = () => {
-  const { tableId } = useParams();
+  const { id: tableId } = useParams();
   
   // Menu & Cart State
   const [menu, setMenu] = useState([]);
@@ -127,7 +127,9 @@ const CustomerView = () => {
       setAuthError('');
     } catch (err) {
       console.error("Login/Session start failed", err);
-      setAuthError(err.response?.data?.detail || 'Table is busy or connection failed.');
+      const detail = err.response?.data?.detail;
+      const errorMessage = typeof detail === 'string' ? detail : 'Table is busy or connection failed.';
+      setAuthError(errorMessage);
     }
   };
 
@@ -183,7 +185,9 @@ const CustomerView = () => {
       fetchTableData();
     } catch (err) {
       console.error("Order placement failed", err);
-      alert(err.response?.data?.detail || 'Failed to place order. Please try again.');
+      const detail = err.response?.data?.detail;
+      const errorMessage = typeof detail === 'string' ? detail : 'Failed to place order. Please try again.';
+      alert(errorMessage);
     }
   };
 
